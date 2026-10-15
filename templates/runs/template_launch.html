@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ template }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ template.name }}</h1><p class="subtitle">{{ template.description|default:"" }}</p></div>
+  {% if can_edit and can_launch %}<a class="btn ghost" href="{% url 'template_update' template.pk %}">{% translate "Edit" %}</a>{% endif %}
+</div>
+<form method="post">{% csrf_token %}
+{% if error %}<div class="message error">{{ error }}</div>{% endif %}
+<div class="split">
+  <div class="card">
+    {% if form.fields %}
+      {% for field in form %}{% include "core/_field.html" with field=field %}{% endfor %}
+    {% else %}<p class="faint">{% translate "Nothing to ask - it runs as set up." %}</p>{% endif %}
+    {% if template.ask_limit %}
+      <div class="field"><label for="id_limit">{% translate "Only these hosts" %}</label>
+        <input class="input mono" id="id_limit" name="limit" value="{{ limit }}" placeholder="{% translate "web01,web02 or web*" %}">
+        <div class="help">{% blocktranslate with name=template.host_group.name %}An Ansible limit pattern within {{ name }}. Empty: all of it.{% endblocktranslate %}</div></div>
+    {% endif %}
+    {% if can_launch %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit" name="action" value="plan">{% translate "Preview changes" %}</button>
+      <button class="btn" type="submit" name="action" value="run">{% translate "Run now" %}</button>
+    </div>
+    <p class="help">{% translate "A preview shows what would change, with diffs, and changes nothing until it is applied." %}</p>
+    {% else %}<p class="faint small">{% blocktranslate with name=template.host_group.name %}You can see this template but not run it on {{ name }}.{% endblocktranslate %}</p>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "What it runs" %}</h3></div>
+    <table><tbody>
+      <tr><td class="faint">{% translate "Playbook" %}</td><td><a href="{{ template.playbook.get_absolute_url }}">{{ template.playbook.name }}</a></td></tr>
+      <tr><td class="faint">{% translate "On" %}</td><td><a class="tag" href="{{ template.host_group.get_absolute_url }}">{{ template.host_group.name }}</a>{% if template.limit %} <span class="mono faint small">limit {{ template.limit }}</span>{% endif %}</td></tr>
+      {% if template.tags %}<tr><td class="faint">{% translate "Tags" %}</td><td class="mono small">{{ template.tags }}</td></tr>{% endif %}
+      {% if template.skip_tags %}<tr><td class="faint">{% translate "Skip tags" %}</td><td class="mono small">{{ template.skip_tags }}</td></tr>{% endif %}
+    </tbody></table>
+    {% if template.extra_vars %}<h3 style="margin-top:1rem">{% translate "Fixed variables" %}</h3><pre class="yaml">{{ template.extra_vars|pprint }}</pre>{% endif %}
+  </div>
+</div>
+</form>
+{% endblock %}

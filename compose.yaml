@@ -1,0 +1,101 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Целиков Евгений
+
+# Loona with its job worker and Redis.
+#
+#   cp .env.example .env    then set LOONA_SECRET_KEY, LOONA_SECRET_STORE_KEY,
+#                           LOONA_DB_PASSWORD and LOONA_REDIS_PASSWORD
+#   docker compose up -d --build
+#   open http://localhost:8080
+#
+# PostgreSQL keeps its data in the loona-db volume; job scratch space and
+# the scheduler's state live in loona-data.
+
+x-loona: &loona
+  build: .
+  image: loona:latest
+  env_file:
+    - path: .env
+      required: false
+  # Named here as well as read from .env, so they arrive however compose was
+  # given them (.env, --env-file, or the shell).
+  environment:
+    LOONA_SECRET_KEY: ${LOONA_SECRET_KEY:?set LOONA_SECRET_KEY in .env}
+    LOONA_SECRET_STORE_KEY: ${LOONA_SECRET_STORE_KEY:-}
+    LOONA_ADMIN_USERNAME: ${LOONA_ADMIN_USERNAME:-}
+    DJANGO_SUPERUSER_PASSWORD: ${DJANGO_SUPERUSER_PASSWORD:-}
+    LOONA_DATABASE_URL: postgres://loona:${LOONA_DB_PASSWORD:?set LOONA_DB_PASSWORD in .env}@db:5432/loona
+    LOONA_RUNNER_MODE: celery
+    # The broker has a password too: runs on the worker share its network.
+    LOONA_BROKER_URL: redis://:${LOONA_REDIS_PASSWORD:?set LOONA_REDIS_PASSWORD in .env}@redis:6379/0
+    # OpenTofu runs on the worker reach the state backend in the web container.
+    LOONA_INTERNAL_URL: http://web:8000
+  volumes:
+    - loona-data:/var/lib/loona
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *loona
+    command: web
+    ports:
+      - "${LOONA_PORT:-8080}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/login/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+  worker:
+    <<: *loona
+    command: worker
+    depends_on:
+      # The web container runs the migrations; the worker waits for them.
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  scheduler:
+    <<: *loona
+    command: scheduler
+    depends_on:
+      web:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: loona
+      POSTGRES_USER: loona
+      POSTGRES_PASSWORD: ${LOONA_DB_PASSWORD:?set LOONA_DB_PASSWORD in .env}
+    volumes:
+      - loona-db:/var/lib/postgresql/data
+    # Reachable from this machine only - for manage.py and tests during
+    # development. Remove the line to keep it inside the compose network.
+    ports:
+      - "127.0.0.1:${LOONA_DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "loona", "-d", "loona"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Hex only (openssl rand -hex 24): it travels inside a URL.
+    command: ["redis-server", "--requirepass", "${LOONA_REDIS_PASSWORD:?set LOONA_REDIS_PASSWORD in .env}"]
+
+volumes:
+  loona-data:
+  loona-db:

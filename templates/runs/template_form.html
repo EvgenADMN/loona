@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% if template.pk %}{% blocktranslate %}Edit {{ template }}{% endblocktranslate %}{% else %}{% translate "New template" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<script src="{% asset 'js/survey-editor.js' %}"></script>
+<div class="page-head"><h1>{% if template.pk %}{% blocktranslate %}Edit {{ template }}{% endblocktranslate %}{% else %}{% translate "New launch template" %}{% endif %}</h1></div>
+<form method="post">{% csrf_token %}
+{% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+<div class="split">
+  <div class="card">
+    {% include "core/_field.html" with field=form.name %}
+    {% include "core/_field.html" with field=form.description %}
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.playbook %}
+      {% include "core/_field.html" with field=form.host_group %}
+    </div>
+    {% include "core/_field.html" with field=form.limit %}
+    {% include "core/_field.html" with field=form.ask_limit %}
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.tags %}
+      {% include "core/_field.html" with field=form.skip_tags %}
+    </div>
+    {% include "core/_field.html" with field=form.extra_vars %}
+  </div>
+
+  {% include "runs/_survey_editor.html" with errors=form.survey.errors intro=_("Each answer becomes an extra variable for the run. Password answers are kept encrypted, out of the job's record, and masked in the log.") empty=_("No questions: the template launches as it is.") %}
+</div>
+<div class="btn-row" style="margin-top:1rem">
+  <button class="btn primary" type="submit">{% translate "Save" %}</button>
+  <a class="btn ghost" href="{% if template.pk %}{{ template.get_absolute_url }}{% else %}{% url 'template_list' %}{% endif %}">{% translate "Cancel" %}</a>
+</div>
+</form>
+{% if template.pk %}
+{% blocktranslate asvar confirm_text with name=template.name %}Delete the template {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'template_delete' template.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:1rem">{% csrf_token %}
+  <button class="btn danger" type="submit">{% translate "Delete template" %}</button>
+</form>
+{% endif %}
+{% endblock %}

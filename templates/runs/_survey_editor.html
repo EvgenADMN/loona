@@ -1,0 +1,36 @@
+{% load i18n %}{# The survey editor card. Context: survey, types, errors, intro, empty, title, input_name; needs js/survey-editor.js. #}
+  <div class="card" x-data="surveyEditor('survey-data')">
+    {{ survey|json_script:"survey-data" }}
+    <div class="card-head"><h3>{% if title %}{{ title }}{% else %}{% translate "Survey" %}{% endif %}</h3><button class="btn tiny" type="button" @click="add()">{% translate "Add question" %}</button></div>
+    <p class="small" style="margin-top:0">{{ intro }}</p>
+    {% for error in errors %}<div class="errors">{{ error }}</div>{% endfor %}
+    <input type="hidden" name="{{ input_name|default:'survey' }}" :value="json">
+    <template x-for="(q, i) in questions" :key="i">
+      <div class="form-section" style="border-top:1px solid var(--line);padding-top:.6rem">
+        <div class="form-grid">
+          <div class="field"><label>{% translate "Variable" %}</label><input class="input mono" x-model="q.variable" placeholder="{% translate "app_version" %}"></div>
+          <div class="field"><label>{% translate "Question" %}</label><input class="input" x-model="q.label" placeholder="{% translate "Which version?" %}"></div>
+          <div class="field"><label>{% translate "Type" %}</label>
+            <select class="input" x-model="q.type">{% for value, label in types %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select>
+          </div>
+          <div class="field" x-show="q.type !== 'password'"><label>{% translate "Default" %}</label>
+            <template x-if="q.type === 'multichoice'"><textarea class="input" rows="2" x-model="q.default" placeholder="one per line"></textarea></template>
+            <template x-if="q.type !== 'multichoice'"><input class="input" x-model="q.default"></template>
+          </div>
+        </div>
+        <div class="field" x-show="hasChoices(q)"><label>{% translate "Choices, one per line" %}</label><textarea class="input" rows="3" x-model="q.choices"></textarea></div>
+        <div class="form-grid" x-show="isNumber(q)">
+          <div class="field"><label>{% translate "Min" %}</label><input class="input" x-model="q.min"></div>
+          <div class="field"><label>{% translate "Max" %}</label><input class="input" x-model="q.max"></div>
+        </div>
+        <div class="field"><label>{% translate "Help" %}</label><input class="input" x-model="q.help"></div>
+        <div class="btn-row">
+          <label class="check-row" style="margin:0"><input type="checkbox" x-model="q.required"> {% translate "Required" %}</label>
+          <button class="btn tiny ghost" type="button" @click="move(i, -1)">{% translate "Up" %}</button>
+          <button class="btn tiny ghost" type="button" @click="move(i, 1)">{% translate "Down" %}</button>
+          <button class="btn tiny ghost" type="button" @click="remove(i)">{% translate "Remove" %}</button>
+        </div>
+      </div>
+    </template>
+    <p class="faint small" x-show="!questions.length">{{ empty }}</p>
+  </div>

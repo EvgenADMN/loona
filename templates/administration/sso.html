@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Single sign-on - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Settings take effect without a restart." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<form method="post">{% csrf_token %}
+<div class="split" x-data="{ protocol: '{{ form.sso_protocol.value|default:''|escapejs }}' }">
+  <div class="card">
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+    <p class="small" style="margin-top:0">{% translate "People sign in through your identity provider - Keycloak, Authentik, Entra ID, Okta, ADFS - and its groups become teams, as LDAP groups do. Local and LDAP sign-in keep working next to it." %}</p>
+    <div class="form-section">
+      <div @change="if ($event.target.name === 'sso_protocol') protocol = $event.target.value">{% include "core/_field.html" with field=form.sso_protocol %}</div>
+      {% include "core/_field.html" with field=form.sso_label %}
+    </div>
+    <div class="form-section" x-show="protocol === 'oidc'">
+      <h3>{% translate "OpenID Connect" %}</h3>
+      {% include "core/_field.html" with field=form.oidc_issuer %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.oidc_client_id %}
+        <div>{% include "core/_field.html" with field=form.client_secret %}
+          {% if has_secret %}<p class="faint small" style="margin-top:-.5rem">{% translate "A secret is stored." %}</p>{% endif %}</div>
+      </div>
+      {% include "core/_field.html" with field=form.oidc_scopes %}
+    </div>
+    <div class="form-section" x-show="protocol === 'saml'">
+      <h3>{% translate "SAML 2.0" %}</h3>
+      {% include "core/_field.html" with field=form.saml_idp_metadata %}
+    </div>
+    <div class="form-section" x-show="protocol">
+      <h3>{% translate "Who people are" %}</h3>
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.sso_username_attr %}
+        {% include "core/_field.html" with field=form.sso_email_attr %}
+        {% include "core/_field.html" with field=form.sso_first_name_attr %}
+        {% include "core/_field.html" with field=form.sso_last_name_attr %}
+      </div>
+      {% include "core/_field.html" with field=form.sso_link_existing %}
+    </div>
+    <div class="form-section" x-show="protocol">
+      <h3>{% translate "Groups and access" %}</h3>
+      {% include "core/_field.html" with field=form.sso_groups_attr %}
+      {% include "core/_field.html" with field=form.sso_mirror_groups %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.sso_require_group %}
+        {% include "core/_field.html" with field=form.sso_superuser_group %}
+      </div>
+      <p class="help">{% blocktranslate %}Groups appear under Directory groups as <span class="mono">oidc:name</span> or <span class="mono">saml:name</span>; map them to teams there, ahead of time if you like.{% endblocktranslate %}</p>
+    </div>
+    <div class="btn-row" style="margin-top:.8rem">
+      <button class="btn primary" type="submit" name="save" value="1">{% translate "Save" %}</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Register Loona with the provider" %}</h3></div>
+      {% if no_public_url %}<div class="message warn">{% translate "Set Loona's address in General first: these addresses are built from it." %}</div>{% endif %}
+      <div x-show="protocol === 'oidc'">
+        <p class="small" style="margin-top:0">{% translate "A confidential client with the authorization code flow, and this redirect URI:" %}</p>
+        <pre class="yaml" style="white-space:pre-wrap;word-break:break-all">{{ redirect_uri }}</pre>
+      </div>
+      <div x-show="protocol === 'saml'">
+        <p class="small" style="margin-top:0">{% translate "Loona's metadata, or these by hand. The IdP must sign its assertions." %}</p>
+        <table><tbody>
+          <tr><td class="faint">{% translate "Metadata" %}</td><td class="mono small" style="word-break:break-all"><a href="{{ sp_entity }}">{{ sp_entity }}</a></td></tr>
+          <tr><td class="faint">{% translate "Entity ID" %}</td><td class="mono small" style="word-break:break-all">{{ sp_entity }}</td></tr>
+          <tr><td class="faint">{% translate "ACS (POST)" %}</td><td class="mono small" style="word-break:break-all">{{ acs_url }}</td></tr>
+        </tbody></table>
+      </div>
+      <p class="faint small" x-show="!protocol">{% translate "Pick OpenID Connect or SAML on the left." %}</p>
+    </div>
+    <div class="card" style="margin-top:1rem" x-show="protocol">
+      <div class="card-head"><h3>{% translate "Test" %}</h3></div>
+      <p class="small" style="margin-top:0">{% translate "Reads the provider's details as they stand on the left, before saving." %}</p>
+      <button class="btn" type="submit" name="test" value="1">{% translate "Check the provider" %}</button>
+      {% if result %}
+        <div class="approval" style="margin-top:.9rem">
+          <span class="status {% if result.ok %}ok{% else %}fail{% endif %}"><span class="dot"></span>{% if result.ok %}{% translate "Works" %}{% else %}{% translate "Failed" %}{% endif %}</span>
+          <p class="small mono" style="margin:.4rem 0 0;word-break:break-all">{{ result.message }}</p>
+        </div>
+      {% endif %}
+      <p class="help">{% translate "The real test is signing in: open a private window and press the button on the sign-in page. Keep this session open until it works." %}</p>
+    </div>
+  </div>
+</div>
+</form>
+{% endblock %}

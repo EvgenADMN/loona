@@ -1,0 +1,54 @@
+{% load i18n loona_tags %}{# The facts card: host, host_facts, disks, interfaces, uptime; full=True on the facts page. #}
+<div class="card" style="margin-top:1rem">
+  <div class="card-head">
+    <h2>{% translate "System" %}</h2>
+    <div class="btn-row">
+      {% if host_facts %}<span class="faint small">{% blocktranslate with gathered_at=host_facts.gathered_at|ago %}gathered {{ gathered_at }}{% endblocktranslate %}{% if host_facts.job %} {% translate "by" %} <a href="{{ host_facts.job.get_absolute_url }}">#{{ host_facts.job.pk }}</a>{% endif %}</span>{% endif %}
+      {% if host_facts and not full %}<a class="small" href="{% url 'host_facts' host.pk %}">{% translate "All facts" %}</a>{% endif %}
+      {% if host.pk in access.operator_hosts and host.enabled %}
+        <form method="post" action="{% url 'host_gather_facts' host.pk %}">{% csrf_token %}<button class="btn tiny" type="submit">{% translate "Gather facts" %}</button></form>
+      {% endif %}
+    </div>
+  </div>
+  {% if not host_facts %}
+    <div class="empty">{% translate "No facts yet. Any playbook that gathers facts fills this in" %}{% if host.pk in access.operator_hosts %}{% translate ", or gather them now" %}{% endif %}.</div>
+  {% else %}
+  {% with f=host_facts %}
+  <div class="split">
+    <table><tbody>
+      <tr><td class="faint">{% translate "OS" %}</td><td>{{ f.os|default:"-" }}{% if f.os_family and f.os_family not in f.os %} <span class="faint small">{{ f.os_family }}</span>{% endif %}</td></tr>
+      <tr><td class="faint">{% translate "Kernel" %}</td><td class="mono small">{{ f.kernel|default:"-" }} {{ f.architecture }}</td></tr>
+      <tr><td class="faint">{% translate "CPU" %}</td><td>{% if f.cpu_count %}{% blocktranslate with cpu_count=f.cpu_count %}{{ cpu_count }} vCPU{% endblocktranslate %}{% endif %} <span class="faint small">{{ f.cpu_model }}</span></td></tr>
+      <tr><td class="faint">{% translate "Memory" %}</td><td>{% if f.memory_mb %}{% blocktranslate with memory_gb=f.memory_gb %}{{ memory_gb }} GB{% endblocktranslate %} <span class="faint small">{% blocktranslate with memory_mb=f.memory_mb %}{{ memory_mb }} MB{% endblocktranslate %}</span>{% else %}-{% endif %}</td></tr>
+      <tr><td class="faint">{% translate "Virtualization" %}</td><td>{{ f.virtualization|default:"-" }}</td></tr>
+      <tr><td class="faint">{% translate "Uptime" %}</td><td>{{ uptime|uptime }}</td></tr>
+      <tr><td class="faint">{% translate "FQDN" %}</td><td class="mono small">{{ f.fqdn|default:"-" }}</td></tr>
+    </tbody></table>
+    <div>
+      <table><tbody>
+      {% for i in interfaces %}
+        <tr><td class="mono small">{{ i.name }}{% if i.default %} <span class="badge">{% translate "default" %}</span>{% endif %}</td>
+          <td class="mono small">{% for a in i.addresses %}<div>{{ a }}</div>{% endfor %}</td>
+          {% if full %}<td class="mono faint small">{{ i.mac }}</td>{% endif %}</tr>
+      {% empty %}
+        <tr><td class="faint">{% translate "Addresses" %}</td><td class="mono small">{% for a in f.address_list %}<div>{{ a }}</div>{% empty %}<span class="faint" style="font-family:var(--sans)">{% blocktranslate %}None reported - Ansible reads them with the <code>ip</code> command, which this machine may lack.{% endblocktranslate %}</span>{% endfor %}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+  {% if disks %}
+  <h3 style="margin-top:1rem">{% translate "Filesystems" %}</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>{% translate "Mount" %}</th><th>{% translate "Device" %}</th><th>{% translate "Size" %}</th><th>{% translate "Free" %}</th><th>{% translate "Used" %}</th></tr></thead>
+    <tbody>
+    {% for d in disks %}
+      <tr><td class="mono small">{{ d.mount }}</td><td class="mono faint small">{{ d.device }} {{ d.fstype }}</td>
+        <td class="small">{{ d.size|filesizeformat }}</td><td class="small">{{ d.free|filesizeformat }}</td>
+        <td class="small"><span class="meter{% if d.used_pct >= 90 %} warn{% endif %}"><span style="width:{{ d.used_pct }}%"></span></span> {{ d.used_pct }}%</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+  {% endwith %}
+  {% endif %}
+</div>

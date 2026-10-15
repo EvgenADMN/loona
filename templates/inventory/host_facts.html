@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}Facts - {{ host }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ host.name }}</h1><p class="subtitle"><a href="{{ host.get_absolute_url }}">{% translate "Host" %}</a> {% translate "· facts" %}</p></div>
+</div>
+{% include "inventory/_facts_summary.html" with full=True %}
+
+{% if host_facts %}
+{% if devices %}
+<div class="card" style="margin-top:1rem">
+  <div class="card-head"><h3>{% translate "Disks" %}</h3></div>
+  <table><tbody>
+  {% for d in devices %}
+    <tr><td class="mono small">{{ d.name }}</td><td class="small">{{ d.size }}</td><td class="faint small">{% if d.ssd %}{% translate "SSD" %}{% endif %}</td><td class="faint small">{{ d.model }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1rem" x-data="{ q: '' }">
+  <div class="card-head">
+    <h3>{% translate "All facts" %} <span class="faint small">{{ rows|length }}</span></h3>
+    <input class="input" type="search" x-model="q" placeholder="{% translate "Filter by name or value" %}" style="max-width:300px">
+  </div>
+  <div class="table-wrap"><table>
+    <tbody>
+    {% for key, value in rows %}
+      <tr x-show="!q || $el.textContent.toLowerCase().includes(q.toLowerCase())"><td class="mono small" style="white-space:nowrap">{{ key }}</td><td class="mono small" style="word-break:break-all">{{ value|truncatechars:400 }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

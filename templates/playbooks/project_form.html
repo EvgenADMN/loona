@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if project.pk %}{% blocktranslate %}Edit {{ project }}{% endblocktranslate %}{% else %}{% translate "New project" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if project.pk %}{% blocktranslate %}Edit {{ project }}{% endblocktranslate %}{% else %}{% translate "New Ansible project" %}{% endif %}</h1></div>
+<div class="card" style="max-width:760px" x-data="{ source: '{{ form.source.value|default:'files'|escapejs }}' }">
+  <form method="post">{% csrf_token %}
+    {% include "core/_field.html" with field=form.name %}
+    {% include "core/_field.html" with field=form.description %}
+    <div class="field" @change="source = $event.target.value"><label>{% translate "Content" %}</label>{{ form.source }}</div>
+    <div x-show="source === 'git'">
+      {% include "core/_field.html" with field=form.git_url %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.git_ref %}
+        {% include "core/_field.html" with field=form.git_path %}
+      </div>
+      {% include "core/_field.html" with field=form.git_credential %}
+    </div>
+    <p class="help" x-show="source === 'files'">{% translate "Starts with site.yml, an example role and requirements.yml to edit." %}</p>
+    {% include "core/_field.html" with field=form.vault_credentials %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% if project.pk %}{{ project.get_absolute_url }}{% else %}{% url 'project_list' %}{% endif %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

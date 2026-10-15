@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate with pk=job.pk %}Job #{{ pk }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>#{{ job.pk }} {{ job.playbook_name }}</h1>
+    <p class="subtitle">
+      {% if job.drift_check %}{% translate "drift check" %} <a href="{% url 'drift_list' %}">{{ job.drift_check.name }}</a>{% if job.created_by %}{% blocktranslate with created_by=job.created_by %}, started by {{ created_by }}{% endblocktranslate %}{% endif %}{% elif job.launch_template %}{% translate "template" %} <a href="{{ job.launch_template.get_absolute_url }}">{{ job.launch_template.name }}</a>{% blocktranslate with created_by=job.created_by|default:"?" %}, by {{ created_by }}{% endblocktranslate %}{% elif job.schedule %}{% translate "schedule" %} <a href="{% url 'schedule_list' %}">{{ job.schedule.name }}</a>{% blocktranslate with created_by=job.created_by|default:"?" %}, as {{ created_by }}{% endblocktranslate %}{% else %}{% blocktranslate with created_by=job.created_by|default:"?" %}launched by {{ created_by }}{% endblocktranslate %}{% endif %} · {{ job.created_at }}
+      {% if job.is_plan %}<span class="badge">{% translate "preview" %}</span>{% endif %}
+      {% if job.workflow_node %}<span class="badge">{% blocktranslate with name=job.workflow_node.step.name %}step {{ name }} of{% endblocktranslate %} <a href="{{ job.workflow_node.run.get_absolute_url }}">{{ job.workflow_node.run }}</a></span>{% endif %}
+      {% if job.catalog_request %}<span class="badge">{% translate "catalog" %} <a href="{{ job.catalog_request.get_absolute_url }}">{{ job.catalog_request.name }}</a> {% blocktranslate with requested_by=job.catalog_request.requested_by|default:"?" %}for {{ requested_by }}{% endblocktranslate %}</span>{% endif %}
+      {% if job.plan %}<span class="badge">{% translate "applies" %} <a href="{{ job.plan.get_absolute_url }}">{% blocktranslate with pk=job.plan.pk %}preview #{{ pk }}{% endblocktranslate %}</a></span>{% endif %}
+    </p>
+  </div>
+  <div class="btn-row">
+    {% if not can_operate %}
+    {% elif not job.is_final %}
+      <form method="post" action="{% url 'job_cancel' job.pk %}">{% csrf_token %}
+        <button class="btn danger" type="submit">{% translate "Cancel run" %}</button>
+      </form>
+    {% elif job.is_adhoc %}
+      {% if not job.plan %}<a class="btn primary" href="{% url 'adhoc_launch' %}?relaunch={{ job.pk }}">{% translate "Run again" %}</a>{% endif %}
+    {% elif job.playbook %}
+      <a class="btn primary" href="{% url 'job_launch' job.playbook.pk %}?relaunch={{ job.pk }}">{% translate "Relaunch" %}</a>
+    {% endif %}
+    <a class="btn ghost" href="{% url 'job_list' %}">{% translate "All jobs" %}</a>
+  </div>
+</div>
+
+{% if job.is_tofu %}{% include "runs/_tofu.html" %}{% elif plan %}{% include "runs/_plan.html" %}{% endif %}
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{% translate "Output" %}</h2><span class="faint small">{% blocktranslate count counter=events|length %}{{ counter }} event{% plural %}{{ counter }} events{% endblocktranslate %}</span></div>
+    <div class="log-view" id="log"
+         x-data
+         x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)"
+         @htmx:after-swap.window="$el.scrollTop = $el.scrollHeight">
+      {% include "runs/_job_events.html" with events=events job=job last_counter=last_counter %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Status" %}</h3></div>
+      {% include "runs/_job_status.html" with job=job %}
+    </div>
+
+    {% if job.is_tofu %}
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Project" %}</h3></div>
+      <table><tbody>
+        <tr><td class="faint">{% translate "Project" %}</td><td>{% if job.tofu_project %}<a href="{{ job.tofu_project.get_absolute_url }}">{{ job.tofu_project.name }}</a>{% else %}{% translate "deleted" %}{% endif %}</td></tr>
+        <tr><td class="faint">{% translate "Revision" %}</td><td class="mono small">{{ job.tofu_revision|default:"-" }}</td></tr>
+        {% if job.tofu_destroy %}<tr><td class="faint">{% translate "Kind" %}</td><td>{% translate "destroy" %}</td></tr>{% endif %}
+      </tbody></table>
+    </div>
+    {% else %}
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Targets" %}</h3></div>
+      <div>
+        {% for group in job.target_groups.all %}<a class="tag" href="{% url 'group_detail' group.pk %}">{% blocktranslate with name=group.name %}group: {{ name }}{% endblocktranslate %}</a>{% endfor %}
+        {% for host in job.target_hosts.all %}<a class="tag" href="{% url 'host_detail' host.pk %}">{{ host.name }}</a>{% endfor %}
+      </div>
+      <table style="margin-top:.8rem">
+        <tbody>
+          {% if job.limit %}<tr><td class="faint">{% translate "Limit" %}</td><td class="mono">{{ job.limit }}</td></tr>{% endif %}
+          {% if job.tags %}<tr><td class="faint">{% translate "Tags" %}</td><td class="mono">{{ job.tags }}</td></tr>{% endif %}
+          {% if job.skip_tags %}<tr><td class="faint">{% translate "Skip tags" %}</td><td class="mono">{{ job.skip_tags }}</td></tr>{% endif %}
+          <tr><td class="faint">{% translate "Forks" %}</td><td>{{ job.forks }}</td></tr>
+          <tr><td class="faint">{% translate "Verbosity" %}</td><td>{{ job.verbosity }}</td></tr>
+        </tbody>
+      </table>
+      {% if job.extra_vars %}<h3 style="margin-top:.8rem">{% translate "Extra vars" %}</h3><pre class="yaml">{{ job.extra_vars|pprint }}</pre>{% endif %}
+      {% if job.secret_names %}<h3 style="margin-top:.8rem">{% translate "Secrets given" %}</h3><div>{% for name in job.secret_names %}<span class="tag mono">{{ name }}</span>{% endfor %}</div>{% endif %}
+    </div>
+
+    {% if job.is_adhoc %}
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Command" %}</h3></div>
+      <table><tbody>
+        <tr><td class="faint">{% translate "Module" %}</td><td class="mono">{{ job.adhoc_module }}{% if job.adhoc_become %} <span class="badge">{% translate "become" %}</span>{% endif %}</td></tr>
+      </tbody></table>
+      {% if job.adhoc_args %}<pre class="yaml">{{ job.adhoc_args }}</pre>{% endif %}
+    </div>
+    {% endif %}
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Playbook snapshot" %}</h3></div>
+      <pre class="yaml" style="max-height:340px;overflow:auto">{{ job.playbook_yaml }}</pre>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Users - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Local accounts and people who signed in through LDAP." %}</p></div>
+  <a class="btn primary" href="{% url 'admin_user_create' %}">{% translate "New local user" %}</a>
+</div>
+{% include "administration/_nav.html" %}
+<div class="card">
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "User" %}</th><th>{% translate "From" %}</th><th>{% translate "Teams" %}</th><th>{% translate "Last sign-in" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for person in people %}
+      <tr>
+        <td>
+          <a href="{% url 'admin_user_edit' person.pk %}">{{ person.username }}</a>
+          {% if person.is_superuser %}<span class="badge accent">{% translate "superuser" %}</span>{% endif %}
+          {% if not person.is_active %}<span class="badge">{% translate "locked" %}</span>{% endif %}
+          {% if person.get_full_name %}<div class="faint small">{{ person.get_full_name }}</div>{% endif %}
+        </td>
+        <td class="small">{% if person.directory_account %}{% translate "LDAP" %}{% else %}{% translate "local" %}{% endif %}</td>
+        <td>{% for team in person.groups.all %}<span class="tag">{{ team.name }}</span>{% empty %}<span class="faint">-</span>{% endfor %}</td>
+        <td class="faint small">{% if person.last_login %}{{ person.last_login|ago }}{% else %}{% translate "never" %}{% endif %}</td>
+        <td style="text-align:right"><a class="btn tiny ghost" href="{% url 'admin_user_edit' person.pk %}">{% translate "Edit" %}</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

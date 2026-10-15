@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "General - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Settings take effect without a restart." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="split">
+  <div class="card">
+    <form method="post">{% csrf_token %}
+      {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+      <div class="form-section">
+        <h3>{% translate "Instance" %}</h3>
+        <div class="form-grid">
+          {% include "core/_field.html" with field=form.instance_name %}
+          {% include "core/_field.html" with field=form.language %}
+        </div>
+        {% include "core/_field.html" with field=form.public_url %}
+        <div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3>{% translate "Sign-in and access" %}</h3>
+        <div class="form-grid">
+          {% include "core/_field.html" with field=form.session_hours %}
+          {% include "core/_field.html" with field=form.local_login %}
+          {% include "core/_field.html" with field=form.mfa_policy %}
+          {% include "core/_field.html" with field=form.default_approval_policy %}
+        </div>
+      </div>
+      <div class="form-section">
+        <h3>{% translate "Runs" %}</h3>
+        <div class="form-grid">
+          {% include "core/_field.html" with field=form.job_retention_days %}
+          {% include "core/_field.html" with field=form.max_job_events %}
+          {% include "core/_field.html" with field=form.bootstrap_wait_seconds %}
+        </div>
+        {% include "core/_field.html" with field=form.module_docs %}
+        {% include "core/_field.html" with field=form.adhoc_modules %}
+      </div>
+      <button class="btn primary" type="submit" style="margin-top:.8rem">{% translate "Save" %}</button>
+    </form>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Module index" %}</h3></div>
+    <p class="small" style="margin-top:0">{% translate "The playbook editor offers every module ansible-doc knows. Refresh after installing collections on this server." %}</p>
+    <form method="post" action="{% url 'admin_refresh_modules' %}">{% csrf_token %}<button class="btn" type="submit">{% translate "Refresh module index" %}</button></form>
+    <h3 style="margin-top:1.2rem">{% translate "Set in the environment" %}</h3>
+    <p class="faint small" style="margin:0">{% translate "The secret keys, the database URL, the Celery broker and data directories stay in environment variables: Loona needs them before it can read anything here." %}</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% load i18n %}{# A workflow drawn: graph from workflows.graph.layout; link_steps for the editor. #}
+<div class="wf-graph">
+<svg width="{{ graph.width }}" height="{{ graph.height }}" viewBox="0 0 {{ graph.width }} {{ graph.height }}" role="img" aria-label="Workflow steps and the arrows between them">
+  <defs>
+    <marker id="wf-arrow-success" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="wf-head success"/></marker>
+    <marker id="wf-arrow-failure" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="wf-head failure"/></marker>
+    <marker id="wf-arrow-always" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" class="wf-head always"/></marker>
+  </defs>
+  {% for line in graph.lines %}<path d="{{ line.d }}" class="wf-line {{ line.condition }}" marker-end="url(#wf-arrow-{{ line.condition }})"><title>{{ line.label }}</title></path>{% endfor %}
+  {% for b in graph.boxes %}
+  <g class="wf-box {{ b.badge }}">
+    <rect x="{{ b.x }}" y="{{ b.y }}" width="{{ b.w }}" height="{{ b.h }}" rx="6"/>
+    <text x="{{ b.x|add:12 }}" y="{{ b.y|add:21 }}" class="wf-name">{{ b.step.name|truncatechars:24 }}</text>
+    <text x="{{ b.x|add:12 }}" y="{{ b.y|add:39 }}" class="wf-kind">{% if b.node %}{{ b.node.get_status_display }}{% else %}{{ b.kind }}{% endif %}</text>
+  </g>
+  {% endfor %}
+</svg>
+</div>
+<p class="faint small" style="margin:.4rem 0 0"><span class="wf-key success"></span> {% translate "on success" %} <span class="wf-key failure"></span> {% translate "on failure" %} <span class="wf-key always"></span> {% translate "always" %}</p>

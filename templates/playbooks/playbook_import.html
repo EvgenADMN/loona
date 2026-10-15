@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Import YAML - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% blocktranslate with name=playbook.name %}Import YAML into {{ name }}{% endblocktranslate %}</h1>
+    <p class="subtitle">{% translate "Paste a single play. Loona turns its tasks into editable blocks." %}</p>
+  </div>
+</div>
+<div class="card" style="max-width:900px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:.6rem">
+      <button class="btn primary" type="submit">{% translate "Import" %}</button>
+      <a class="btn ghost" href="{{ playbook.get_absolute_url }}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Sign-in security - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Sign-in security" %}</h1><p class="subtitle">{% translate "How you sign in, and what keeps others out." %}</p></div></div>
+{% include "api/_tabs.html" with tab="security" %}
+{% if fresh %}
+  <div class="message success" style="margin-bottom:1rem">
+    <b>{% translate "Your recovery codes - copy them somewhere safe now. Each works once, when the phone is not at hand; Loona will not show them again." %}</b>
+    <pre class="yaml" style="margin:.5rem 0;columns:2">{% for c in fresh %}{{ c }}
+{% endfor %}</pre>
+  </div>
+{% endif %}
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h3>{% translate "One-time codes" %}</h3>
+      {% if on %}<span class="status ok"><span class="dot"></span>{% translate "on" %}</span>{% else %}<span class="status {% if required %}fail{% else %}warn{% endif %}"><span class="dot"></span>{% translate "off" %}</span>{% endif %}</div>
+    {% if sso %}
+      <p class="small" style="margin-top:0">{% translate "You sign in through your organisation's identity provider; it decides on a second factor." %}</p>
+    {% elif on %}
+      <p class="small" style="margin-top:0">{% blocktranslate count counter=left %}Every sign-in asks for a code from your authenticator app. {{ counter }} recovery code left.{% plural %}Every sign-in asks for a code from your authenticator app. {{ counter }} recovery codes left.{% endblocktranslate %}</p>
+      <form method="post" action="{% url 'account_security_codes' %}" class="inline-code">{% csrf_token %}
+        <input class="input" name="code" placeholder="{% translate "Current code" %}" autocomplete="one-time-code" inputmode="numeric" required>
+        <button class="btn" type="submit">{% translate "New recovery codes" %}</button>
+      </form>
+      <a class="btn ghost" href="{% url 'account_security_setup' %}" style="margin-top:.6rem">{% translate "Move to another phone" %}</a>
+      {% if not required %}
+      <form method="post" action="{% url 'account_security_off' %}" class="inline-code" style="margin-top:1rem">{% csrf_token %}
+        <input class="input" name="code" placeholder="{% translate "Current code" %}" autocomplete="one-time-code" inputmode="numeric" required>
+        <button class="btn danger" type="submit">{% translate "Turn off" %}</button>
+      </form>
+      {% endif %}
+    {% else %}
+      {% if required %}<div class="message error">{% translate "Your account needs one-time codes. Set them up to go on using Loona." %}</div>{% endif %}
+      <p class="small" style="margin-top:0">{% translate "A code from your phone at every sign-in, on top of the password: a stolen password alone no longer gets anyone in." %}</p>
+      <a class="btn primary" href="{% url 'account_security_setup' %}">{% translate "Set up" %}</a>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "This session" %}</h3></div>
+    <p class="small" style="margin-top:0">{% if method == "oidc" %}{% translate "Signed in through OpenID Connect." %}{% elif method == "saml" %}{% translate "Signed in through SAML." %}{% else %}{% translate "Signed in with a password." %}{% endif %}</p>
+    <p class="help">{% translate "API tokens are not asked for codes: keep them like passwords, and revoke the ones you no longer use." %}</p>
+  </div>
+</div>
+{% endblock %}

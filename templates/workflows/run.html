@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}{{ run }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ run.workflow.name }} #{{ run.pk }}</h1>
+    <p class="subtitle">{% include "core/_status.html" with status=run.status label=run.get_status_display %} {% blocktranslate with created_by=run.created_by|default:"?" created_at=run.created_at|ago %}started by {{ created_by }} {{ created_at }}{% endblocktranslate %}</p></div>
+  <div class="btn-row">
+    {% if can_cancel %}{% translate "Stop this run? Running steps are cancelled." as confirm_text %}<form method="post" action="{% url 'workflow_run_cancel' run.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn danger" type="submit">{% translate "Cancel run" %}</button></form>{% endif %}
+    <a class="btn ghost" href="{{ run.workflow.get_absolute_url }}">{% translate "Workflow" %}</a>
+  </div>
+</div>
+{% if not run.is_final %}<div hx-get="{{ run.get_absolute_url }}" hx-trigger="every 3s" hx-select="main" hx-target="main" hx-swap="outerHTML"></div>{% endif %}
+
+<div class="card">{% include "workflows/_graph.html" %}</div>
+
+<div class="card" style="margin-top:1rem">
+  <div class="table-wrap"><table>
+    <thead><tr><th>{% translate "Step" %}</th><th>{% translate "Status" %}</th><th>{% translate "Run" %}</th><th>{% translate "Notes" %}</th></tr></thead>
+    <tbody>
+    {% for n in nodes %}
+      <tr>
+        <td>{{ n.step.name }}<div class="faint small">{{ n.step.get_kind_display }}</div></td>
+        <td><span class="status {{ n.badge }}"><span class="dot"></span>{{ n.get_status_display }}</span></td>
+        <td class="small">{% if n.job_visible %}<a href="{{ n.job.get_absolute_url }}">#{{ n.job.pk }}</a>{% if n.status == "waiting" and n.job.is_plan %} <a href="{{ n.job.get_absolute_url }}">{% translate "review the plan" %}</a>{% endif %}{% elif n.job %}#{{ n.job.pk }}{% else %}-{% endif %}</td>
+        <td class="small">{{ n.note|linebreaksbr }}
+          {% if n.can_decide %}
+          <form method="post" action="{% url 'workflow_node_decide' run.pk n.pk %}" class="btn-row" style="margin-top:.4rem">{% csrf_token %}
+            <input class="input" name="comment" placeholder="{% translate "Comment (optional)" %}" style="max-width:220px">
+            <button class="btn tiny primary" name="decision" value="approve" type="submit">{% translate "Approve" %}</button>
+            <button class="btn tiny danger" name="decision" value="reject" type="submit">{% translate "Reject" %}</button>
+          </form>
+          {% elif n.status == "waiting" and n.step.kind == "approval" %}<div class="faint">{% blocktranslate with name=run.workflow.host_group.name created_by=run.created_by|default:"the starter" %}An Admin of {{ name }} other than {{ created_by }} decides.{% endblocktranslate %}</div>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

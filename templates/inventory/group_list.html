@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Groups - Inventory - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Inventory" %}</h1><p class="subtitle">{% translate "Pick a group at launch time instead of ticking hosts one by one." %}</p></div>
+  {% if access.manages_inventory %}<a class="btn primary" href="{% url 'group_create' %}">{% translate "New group" %}</a>{% endif %}
+</div>
+{% include "inventory/_tabs.html" with tab="groups" %}
+<div class="card">
+{% if groups %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Name" %}</th><th>{% translate "Hosts" %}</th><th>{% translate "Nested under" %}</th><th>{% translate "Description" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for group in groups %}
+      <tr>
+        <td><a href="{{ group.get_absolute_url }}">{{ group.name }}</a></td>
+        <td class="faint">{{ group.n }}</td>
+        <td>{% for parent in group.parents.all %}<span class="tag">{{ parent.name }}</span>{% empty %}<span class="faint">-</span>{% endfor %}</td>
+        <td class="faint small">{{ group.description|default:"-" }}</td>
+        <td style="text-align:right">{% if group.pk in access.admin_groups %}<a class="btn tiny ghost" href="{% url 'group_update' group.pk %}">{% translate "Edit" %}</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<div class="empty">{% translate "No groups yet." %}{% if access.manages_inventory %} <a href="{% url 'group_create' %}">{% translate "Create one" %}</a>.{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

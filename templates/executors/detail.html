@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate with name=executor.name %}{{ name }} - Executors - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ executor.name }}</h1><p class="subtitle">{% translate "Executor" %}{% if executor.description %} · {{ executor.description }}{% endif %}</p></div>
+  <div class="btn-row">
+    {% blocktranslate asvar confirm_text with name=executor.name %}Delete {{ name }}? Its groups run from Loona again, and runs waiting for it are closed.{% endblocktranslate %}<form method="post" action="{% url 'executor_delete' executor.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn danger" type="submit">{% translate "Delete" %}</button></form>
+    <a class="btn ghost" href="{% url 'executor_list' %}">{% translate "All executors" %}</a>
+  </div>
+</div>
+{% include "administration/_nav.html" %}
+{% if token %}
+  <div class="message success" style="margin-bottom:1rem">
+    {% blocktranslate %}<b>Copy this token now - Loona will not show it again.</b>{% endblocktranslate %}
+    <pre class="yaml" style="margin:.5rem 0;white-space:pre-wrap;word-break:break-all">{{ token }}</pre>
+  </div>
+{% endif %}
+<div class="split">
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Settings" %}</h3></div>
+      <form method="post">{% csrf_token %}
+        {% include "core/_form.html" %}
+        <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      </form>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Recent runs" %}</h3></div>
+      {% if jobs %}
+      <table><tbody>
+      {% for job in jobs %}
+        <tr>
+          <td><a href="{{ job.get_absolute_url }}">#{{ job.pk }}</a> {{ job.playbook_name }}</td>
+          <td><span class="badge {{ job.status|status_badge }}">{% if job.waiting_for_executor %}{% translate "waiting" %}{% else %}{{ job.get_status_display }}{% endif %}</span></td>
+          <td class="faint small">{{ job.created_at|ago }}</td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+      {% else %}<div class="empty">{% translate "No runs yet." %}</div>{% endif %}
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Agents" %}</h3></div>
+      {% if agents %}
+      <table><tbody>
+      {% for agent in agents %}
+        <tr>
+          <td class="mono">{{ agent.name }}<div class="faint small">{{ agent.version|default:"" }}{% if agent.address %} {% blocktranslate with address=agent.address %}· from {{ address }}{% endblocktranslate %}{% endif %}</div></td>
+          <td>{% if agent.is_online %}<span class="status ok"><span class="dot"></span>{% translate "online" %}</span>{% else %}<span class="status fail"><span class="dot"></span>{% translate "offline" %}</span>{% endif %}<div class="faint small">{% blocktranslate with ago=agent.last_seen_at|ago %}seen {{ ago }}{% endblocktranslate %} · {% blocktranslate count counter=agent.slots %}{{ counter }} slot{% plural %}{{ counter }} slots{% endblocktranslate %}</div></td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+      {% else %}<div class="empty">{% translate "No agent has connected yet." %}</div>{% endif %}
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Start an agent" %}</h3></div>
+      <p class="small" style="margin-top:0">{% translate "On a machine in that network which can reach the hosts over SSH and Loona over HTTPS - the same image as Loona itself:" %}</p>
+      <pre class="yaml" style="white-space:pre-wrap;word-break:break-all">docker run -d --name loona-executor --restart unless-stopped \
+  -e LOONA_URL={{ url }} \
+  -e LOONA_EXECUTOR_TOKEN={% if token %}{{ token }}{% else %}&lt;the token&gt;{% endif %} \
+  loona:latest executor</pre>
+      <p class="help">{% blocktranslate %}Several agents may share the token; each takes runs as it has room (<span class="mono">LOONA_EXECUTOR_SLOTS</span>, 2 by default). Loona's address must be the one the agent reaches - set <span class="mono">LOONA_CA_FILE</span> for a private CA.{% endblocktranslate %}</p>
+      {% translate "Make a new token? Agents using the old one stop until they get the new one." as confirm_text %}<form method="post" action="{% url 'executor_token' executor.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}
+        <button class="btn" type="submit">{% if executor.token_hash %}{% translate "Replace token" %}{% else %}{% translate "Make token" %}{% endif %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

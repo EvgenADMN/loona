@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}Run {{ playbook }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% blocktranslate with name=playbook.name %}Run {{ name }}{% endblocktranslate %}</h1>
+    <p class="subtitle">{% translate "Pick the targets, then launch. Groups expand to their hosts, nested groups included." %}</p>
+  </div>
+  <a class="btn ghost" href="{{ playbook.get_absolute_url }}">{% translate "Back to playbook" %}</a>
+</div>
+
+<form method="post">{% csrf_token %}
+  {% if form.non_field_errors %}{% for error in form.non_field_errors %}<div class="message error">{{ error }}</div>{% endfor %}{% endif %}
+
+  <div class="split">
+    <div>
+      <div class="card">
+        <div class="card-head"><h2>{% translate "Targets" %}</h2></div>
+        <div class="grid cols-2">
+          {% include "core/_field.html" with field=form.target_groups %}
+          {% include "core/_field.html" with field=form.target_hosts %}
+        </div>
+        {% include "core/_field.html" with field=form.limit %}
+      </div>
+
+      <div class="card" style="margin-top:1rem">
+        <div class="card-head"><h3>{% translate "Run options" %}</h3></div>
+        <div class="form-grid">
+          {% include "core/_field.html" with field=form.tags %}
+          {% include "core/_field.html" with field=form.skip_tags %}
+          {% include "core/_field.html" with field=form.forks %}
+          {% include "core/_field.html" with field=form.verbosity %}
+        </div>
+        {% include "core/_field.html" with field=form.extra_vars %}
+        {% include "core/_field.html" with field=form.diff_mode %}
+      </div>
+
+      <div class="btn-row" style="margin-top:1rem">
+        <button class="btn primary" type="submit" name="action" value="plan">{% translate "Preview changes" %}</button>
+        <button class="btn" type="submit" name="action" value="run">{% translate "Run now" %}</button>
+        <a class="btn ghost" href="{{ playbook.get_absolute_url }}">{% translate "Cancel" %}</a>
+      </div>
+      <p class="help">{% translate "A preview runs in check mode and shows what would change on each host, with diffs. Nothing is touched until you apply it." %}</p>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% translate "What will run" %}</h3></div>
+      <pre class="yaml" style="max-height:60vh;overflow:auto">{{ preview }}</pre>
+    </div>
+  </div>
+</form>
+{% endblock %}

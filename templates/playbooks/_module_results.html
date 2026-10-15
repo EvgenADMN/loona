@@ -1,0 +1,18 @@
+{% load i18n %}{% if results %}
+  <ul class="module-results" role="listbox">
+  {% for m in results %}
+    <li>
+      <button type="button" role="option"
+              hx-get="{% url 'task_fields' playbook.pk %}?module={{ m.name|urlencode }}{% if task_pk %}&task={{ task_pk }}{% endif %}"
+              hx-target="#module-panel" hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('module-results').innerHTML = ''; document.getElementById('module-search').value = ''">
+        <span class="name">{{ m.label }}</span>
+        {% if m.label != m.name %}<span class="mono faint small">{{ m.name }}</span>{% endif %}
+        <span class="faint small desc">{{ m.description|truncatechars:110 }}</span>
+      </button>
+    </li>
+  {% endfor %}
+  </ul>
+{% elif q %}
+  <p class="faint small">{% blocktranslate %}Nothing matches "{{ q }}". A full name such as <span class="mono">my.collection.module</span> works too - type it and press Enter.{% endblocktranslate %}</p>
+{% endif %}

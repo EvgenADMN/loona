@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}{{ host }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ host.name }} {% if not host.enabled %}<span class="badge warn">{% translate "disabled" %}</span>{% endif %}</h1>
+    <p class="subtitle mono">{{ host.ansible_host }}:{{ host.port }}</p>
+  </div>
+  {% if host.pk in access.admin_hosts %}
+  <div class="btn-row">
+    <a class="btn" href="{% url 'adhoc_launch' %}?host={{ host.pk }}">{% translate "Run a command" %}</a>
+    <a class="btn" href="{% url 'host_key' host.pk %}">{% translate "SSH key" %}</a>
+    <a class="btn" href="{% url 'host_update' host.pk %}">{% translate "Edit" %}</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{% translate "History" %}</h2><a class="small" href="{% url 'host_history' host.pk %}">{% translate "All of it" %}</a></div>
+    {% include "inventory/_history.html" %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Details" %}</h3></div>
+    <table>
+      <tbody>
+        <tr>
+          <td class="faint">{% translate "Loona key" %}</td>
+          <td>
+            {% if key and host.pk not in access.admin_hosts %}
+              <span class="status {{ key.badge }}"><span class="dot"></span>{{ key.get_status_display }}</span>
+              <span class="faint small mono">{{ key.username }}</span>
+            {% elif key %}
+              <a href="{% url 'host_key' host.pk %}"><span class="status {{ key.badge }}"><span class="dot"></span>{{ key.get_status_display }}</span></a>
+              <span class="faint small mono">{{ key.username }}</span>
+            {% elif host.pk not in access.admin_hosts %}
+              <span class="faint">-</span>
+            {% else %}
+              <a class="btn tiny primary" href="{% url 'host_key' host.pk %}">{% translate "Add SSH key" %}</a>
+            {% endif %}
+          </td>
+        </tr>
+        <tr>
+          <td class="faint">{% translate "Server key" %}</td>
+          <td>
+            {% for fp in host.host_key_fingerprints %}<div class="mono small">{{ fp }}</div>{% empty %}<span class="faint small">{% translate "Not pinned yet - Loona pins it at the first connection." %}</span>{% endfor %}
+            {% if host.ssh_host_keys and host.pk in access.admin_hosts %}
+              {% translate "Forget the pinned key? Do this only if the machine was rebuilt." as confirm_text %}<form method="post" action="{% url 'host_forget_host_key' host.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:.3rem">{% csrf_token %}
+                <button class="btn tiny ghost" type="submit">{% translate "Forget - the machine was rebuilt" %}</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% if host.tofu_project %}
+        <tr>
+          <td class="faint">{% translate "Created by" %}</td>
+          <td>
+            <a href="{{ host.tofu_project.get_absolute_url }}">{{ host.tofu_project.name }}</a>
+            {% if host.bootstrapped_at %}<span class="status ok"><span class="dot"></span>{% blocktranslate with bootstrapped_at=host.bootstrapped_at|ago %}set up {{ bootstrapped_at }}{% endblocktranslate %}</span>
+              {% if host.pk in access.admin_hosts %}
+              {% blocktranslate asvar confirm_text with name=host.name %}Set {{ name }} up again? For a machine OpenTofu has replaced: Loona logs in with the project\'s bootstrap key and installs its own key anew.{% endblocktranslate %}<form method="post" action="{% url 'tofu_host_bootstrap' host.pk %}" style="display:inline" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit" title="{% translate "For a machine that was rebuilt" %}">{% translate "Set up again" %}</button></form>
+              {% endif %}
+            {% elif host.bootstrap_error %}
+              <div class="message error" style="margin:.4rem 0">{{ host.bootstrap_error }}</div>
+              {% if host.pk in access.admin_hosts %}
+              <form method="post" action="{% url 'tofu_host_bootstrap' host.pk %}">{% csrf_token %}<button class="btn tiny" type="submit">{% translate "Try the setup again" %}</button></form>
+              {% endif %}
+            {% else %}<span class="status run"><span class="dot"></span>{% translate "being set up" %}</span>{% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        <tr><td class="faint">{% translate "Credential" %}</td><td>{{ host.credential|default:"-" }}</td></tr>
+        {% with via=host.reached_via %}{% if via %}<tr><td class="faint">{% translate "Runs from" %}</td><td>{% blocktranslate %}executor <b>{{ via }}</b>{% endblocktranslate %}</td></tr>{% endif %}{% endwith %}
+        <tr><td class="faint">{% translate "Groups" %}</td><td>{% for g in host.groups.all %}{% if g.pk in access.visible_groups %}<a class="tag" href="{% url 'group_detail' g.pk %}">{{ g.name }}</a>{% else %}<span class="tag">{{ g.name }}</span>{% endif %}{% empty %}-{% endfor %}</td></tr>
+        <tr><td class="faint">{% translate "Description" %}</td><td>{{ host.description|default:"-" }}</td></tr>
+      </tbody>
+    </table>
+    {% if host.variables %}
+      <h3 style="margin-top:1rem">{% translate "Host variables" %}</h3>
+      <pre class="yaml">{{ host.variables|pprint }}</pre>
+    {% endif %}
+  </div>
+</div>
+{% include "inventory/_facts_summary.html" %}
+{% endblock %}

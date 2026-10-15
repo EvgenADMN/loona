@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ team }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ team.name }}</h1>
+    <p class="subtitle">{% if links %}{% translate "Fed by LDAP: members of the groups below join at sign-in." %}{% else %}{% translate "Local team, managed here." %}{% endif %}</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{% url 'team_rename' team.pk %}">{% translate "Rename" %}</a>
+    <a class="btn danger" href="{% url 'team_delete' team.pk %}">{% translate "Delete" %}</a>
+  </div>
+</div>
+{% if user.is_superuser %}{% include "administration/_nav.html" with section="teams" %}{% endif %}
+
+<div class="split">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>{% translate "Roles on host groups" %}</h2><span class="faint small">{% translate "nested groups inherit" %}</span></div>
+      {% if grants %}
+        <table><tbody>
+        {% for grant in grants %}
+          <tr>
+            <td><a href="{% url 'group_detail' grant.host_group.pk %}">{{ grant.host_group.name }}</a></td>
+            <td><span class="badge">{{ grant.get_role_display }}</span></td>
+            <td style="text-align:right">
+              <form method="post" action="{% url 'team_grant_remove' team.pk grant.pk %}">{% csrf_token %}
+                <button class="btn tiny ghost" type="submit" title="{% translate "Take this role away" %}">{% translate "Remove" %}</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}
+        <p class="faint small">{% translate "No roles yet - members of this team see no hosts through it." %}</p>
+      {% endif %}
+      <form method="post" action="{% url 'team_grant_add' team.pk %}" style="margin-top:1rem">{% csrf_token %}
+        {% include "core/_form.html" with form=grant_form %}
+        <button class="btn primary" type="submit">{% translate "Grant role" %}</button>
+        <div class="help">{% translate "Picking a group the team already has changes its role." %}</div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h2>{% translate "Members" %}</h2><span class="faint small">{{ members|length }}</span></div>
+      {% if members %}
+        <table><tbody>
+        {% for row in members %}
+          <tr>
+            <td>{{ row.user.get_username }}{% if row.user.get_full_name %} <span class="faint small">{{ row.user.get_full_name }}</span>{% endif %}</td>
+            <td>{% if row.synced %}<span class="badge accent" title="{% translate "Added by LDAP at sign-in" %}">{% translate "LDAP" %}</span>{% endif %}{% if not row.user.is_active %} <span class="badge">{% translate "disabled" %}</span>{% endif %}</td>
+            <td style="text-align:right">
+              {% if not row.synced %}
+              <form method="post" action="{% url 'team_member_remove' team.pk row.user.pk %}">{% csrf_token %}
+                <button class="btn tiny ghost" type="submit">{% translate "Remove" %}</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}
+        <p class="faint small">{% translate "Nobody yet." %}</p>
+      {% endif %}
+      <form method="post" action="{% url 'team_member_add' team.pk %}" style="margin-top:1rem">{% csrf_token %}
+        {% include "core/_form.html" with form=member_form %}
+        <button class="btn" type="submit">{% translate "Add member" %}</button>
+        {% if links %}<div class="help">{% translate "LDAP members come and go with their directory groups, so only local accounts can be added here." %}</div>{% endif %}
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>{% translate "LDAP groups" %}</h3></div>
+    {% if links %}
+      <table><tbody>
+      {% for link in links %}
+        <tr>
+          <td>{{ link.name }}<div class="mono faint small">{{ link.dn }}</div></td>
+          <td style="text-align:right">
+            <form method="post" action="{% url 'team_directory_unlink' team.pk link.pk %}">{% csrf_token %}
+              <button class="btn tiny ghost" type="submit">{% translate "Unlink" %}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}
+      <p class="faint small">{% translate "None. Link a directory group and its members join this team at their next sign-in." %}</p>
+    {% endif %}
+    {% if link_form.fields.directory_group.queryset.exists %}
+      <form method="post" action="{% url 'team_directory_link' team.pk %}" style="margin-top:1rem">{% csrf_token %}
+        {% include "core/_form.html" with form=link_form %}
+        <button class="btn" type="submit">{% translate "Link" %}</button>
+        <div class="help">{% translate "Lists groups Loona has seen at a sign-in. A group linked elsewhere moves here." %}</div>
+      </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

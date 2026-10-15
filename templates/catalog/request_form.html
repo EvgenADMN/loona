@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}Request {{ item }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ item.name }}</h1><p class="subtitle">{{ item.description|linebreaksbr }}</p></div>
+  <a class="btn ghost" href="{% url 'catalog_home' %}">{% translate "Catalog" %}</a>
+</div>
+<form method="post">{% csrf_token %}
+{% if error %}<div class="message error">{{ error }}</div>{% endif %}
+<div class="split">
+  <div class="card">
+    {% for field in form %}{% include "core/_field.html" with field=field %}{% endfor %}
+    <div class="btn-row" style="margin-top:1rem"><button class="btn primary" type="submit">{% translate "Request" %}</button></div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "What happens next" %}</h3></div>
+    <ol class="small" style="margin:0;padding-left:1.2rem;line-height:1.7">
+      <li>{% translate "Loona plans the machine with OpenTofu." %}</li>
+      {% if item.approval_required %}<li>{% blocktranslate with name=item.tofu_project.host_group.name %}An admin of {{ name }} looks at the plan and approves it.{% endblocktranslate %}</li>{% endif %}
+      <li>{% blocktranslate with name=item.host_group.name %}The plan is applied and the machine appears as a host in {{ name }}.{% endblocktranslate %}</li>
+      <li>{% translate "Loona puts its own SSH key on it" %}{% if item.tofu_project.baseline_playbook %} {% blocktranslate with name=item.tofu_project.baseline_playbook.name %}and runs {{ name }}{% endblocktranslate %}{% endif %}.</li>
+    </ol>
+    {% if item.max_per_user %}<p class="faint small">{% blocktranslate with max_per_user=item.max_per_user %}Up to {{ max_per_user }} per person at a time.{% endblocktranslate %}</p>{% endif %}
+  </div>
+</div>
+</form>
+{% endblock %}

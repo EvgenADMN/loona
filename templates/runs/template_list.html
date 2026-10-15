@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Templates - Playbooks - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Playbooks" %}</h1><p class="subtitle">{% translate "Templates: a playbook ready to launch on a group, asking only what may change - a version, a service, a password." %}</p></div>
+  {% if access.edit_playbooks %}<a class="btn primary" href="{% url 'template_create' %}">{% translate "New template" %}</a>{% endif %}
+</div>
+{% include "playbooks/_tabs.html" with tab="templates" %}
+<div class="card">
+{% if templates %}
+  <table><tbody>
+  {% for t in templates %}
+    <tr>
+      <td><a href="{{ t.get_absolute_url }}">{{ t.name }}</a>{% if t.description %}<div class="faint small">{{ t.description|truncatechars:120 }}</div>{% endif %}</td>
+      <td class="faint small">{% blocktranslate with name=t.playbook.name %}{{ name }} on{% endblocktranslate %} <span class="tag">{{ t.host_group.name }}</span></td>
+      <td class="faint small">{% blocktranslate count counter=t.survey|length %}{{ counter }} question{% plural %}{{ counter }} questions{% endblocktranslate %}</td>
+      <td style="text-align:right">{% if t.launchable %}<a class="btn tiny primary" href="{{ t.get_absolute_url }}">{% translate "Launch" %}</a>{% endif %}
+        {% if access.edit_playbooks and t.launchable %}<a class="btn tiny ghost" href="{% url 'template_update' t.pk %}">{% translate "Edit" %}</a>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+{% else %}<div class="empty">{% translate "No templates yet." %}{% if access.edit_playbooks %} <a href="{% url 'template_create' %}">{% translate "Make one" %}</a> {% translate "for something people run often." %}{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

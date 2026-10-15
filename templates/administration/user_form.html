@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if person %}{{ person.username }}{% else %}{% translate "New user" %}{% endif %} {% translate "- Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if person %}{{ person.username }}{% else %}{% translate "New local user" %}{% endif %}</h1>
+  <p class="subtitle">{% if identity %}{% blocktranslate with protocol=identity.protocol|upper subject=identity.subject %}Signs in through single sign-on ({{ protocol }}) as <span class="mono">{{ subject }}</span>; name, mail and teams come from the provider.{% endblocktranslate %}{% elif account %}{% blocktranslate with dn=account.dn %}Signs in through LDAP as <span class="mono">{{ dn }}</span>; name, mail and directory teams come from there.{% endblocktranslate %}{% elif person %}{% translate "Local account." %}{% else %}{% translate "Signs in with a password kept by Loona." %}{% endif %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="card" style="max-width:760px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:.8rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% url 'admin_users' %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% if person and not identity %}
+<div class="card" style="max-width:760px;margin-top:1rem">
+  <div class="card-head"><h3>{% translate "One-time codes" %}</h3>
+    {% if codes_on %}<span class="status ok"><span class="dot"></span>{% translate "on" %}</span>{% else %}<span class="faint small">{% translate "off" %}</span>{% endif %}</div>
+  {% if codes_on %}
+    {% translate "Reset the one-time codes? The person sets them up again at the next sign-in, if they are required." as confirm_text %}
+    <form method="post" action="{% url 'admin_user_codes_reset' person.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}
+      <p class="small" style="margin-top:0">{% translate "For a lost phone, when the recovery codes are gone too." %}</p>
+      <button class="btn danger" type="submit">{% translate "Reset one-time codes" %}</button>
+    </form>
+  {% else %}<p class="small faint" style="margin:0">{% translate "Not set up." %}</p>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

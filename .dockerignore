@@ -1,0 +1,12 @@
+.git
+.idea
+.vscode
+.venv
+venv
+.env
+db.sqlite3*
+var/
+staticfiles/
+media/
+**/__pycache__
+**/*.pyc

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate with name=req.name %}{{ name }} - Catalog - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="mono">{{ req.name }}</h1>
+    <p class="subtitle">{% blocktranslate with name=req.item.name requested_by=req.requested_by|default:"?" created_at=req.created_at|ago %}{{ name }} · requested by {{ requested_by }} {{ created_at }}{% endblocktranslate %}</p>
+  </div>
+  <div class="btn-row">
+    {% if can_approve %}<a class="btn primary" href="{{ plan.get_absolute_url }}">{% translate "Review and approve" %}</a>{% endif %}
+    {% if can_act %}
+      {% if req.status == "active" %}
+        {% blocktranslate asvar confirm_text with name=req.name %}Retire {{ name }}? The machine will be destroyed.{% endblocktranslate %}<form method="post" action="{% url 'catalog_request_action' req.pk 'retire' %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn danger" type="submit">{% translate "Retire" %}</button></form>
+      {% endif %}
+      {% if req.status == "failed" or req.status == "waiting" %}
+        <form method="post" action="{% url 'catalog_request_action' req.pk 'retry' %}">{% csrf_token %}<button class="btn" type="submit" title="{% translate "Make a fresh plan" %}">{% translate "Plan again" %}</button></form>
+        <form method="post" action="{% url 'catalog_request_action' req.pk 'withdraw' %}">{% csrf_token %}<button class="btn ghost" type="submit">{% if req.retiring %}{% translate "Keep the machine" %}{% else %}{% translate "Withdraw" %}{% endif %}</button></form>
+      {% endif %}
+    {% endif %}
+    <a class="btn ghost" href="{% url 'catalog_home' %}">{% translate "Catalog" %}</a>
+  </div>
+</div>
+
+{% if req.status == "planning" or req.status == "applying" %}<div hx-get="{{ req.get_absolute_url }}" hx-trigger="every 3s" hx-select="main" hx-target="main" hx-swap="outerHTML"></div>{% endif %}
+
+{% if req.error %}<div class="message {% if req.status == 'failed' or req.status == 'rejected' %}error{% else %}info{% endif %}">{{ req.error }}</div>{% endif %}
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{% translate "Status" %}</h2><span class="status {{ req.badge }}"><span class="dot"></span>{{ req.stage }}</span></div>
+    <table><tbody>
+      {% if req.status == "waiting" %}<tr><td class="faint">{% translate "Next" %}</td><td>{% blocktranslate with name=req.item.tofu_project.host_group.name %}An admin of {{ name }} approves the plan{% endblocktranslate %}{% if req.retiring %} {% translate "to destroy the machine" %}{% endif %}.</td></tr>{% endif %}
+      <tr><td class="faint">{% translate "Host" %}</td><td>{% if host_visible %}<a href="{{ req.host.get_absolute_url }}">{{ req.host.name }}</a>{% elif req.host %}{{ req.host.name }}{% else %}-{% endif %} <span class="mono small">{{ req.address }}</span></td></tr>
+      {% if req.host and req.host.bootstrap_error %}<tr><td class="faint">{% translate "Setup" %}</td><td class="small">{{ req.host.bootstrap_error }}</td></tr>
+      {% elif req.host and not req.host.bootstrapped_at %}<tr><td class="faint">{% translate "Setup" %}</td><td><span class="status run"><span class="dot"></span>{% translate "Loona is setting it up" %}</span></td></tr>{% endif %}
+      <tr><td class="faint">{% translate "Run" %}</td><td>{% if job_visible %}<a href="{{ req.job.get_absolute_url }}">#{{ req.job.pk }} {{ req.job.playbook_name }}</a>{% elif req.job %}#{{ req.job.pk }}{% else %}-{% endif %}</td></tr>
+    </tbody></table>
+    {% if req.values %}
+    <h3 style="margin-top:1rem">{% translate "Answers" %}</h3>
+    <table><tbody>{% for key, value in req.values.items %}<tr><td class="mono faint">{{ key }}</td><td>{{ value }}</td></tr>{% endfor %}</tbody></table>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Plan" %}</h3>{% if tofu %}<span class="small">+{{ tofu.add }} ~{{ tofu.change }} −{{ tofu.destroy }}</span>{% endif %}</div>
+    {% if tofu %}
+      <table><tbody>{% for r in tofu.resources %}<tr><td class="mono small">{{ r.address }}</td><td class="small"><span class="status {% if r.action == 'create' %}ok{% elif r.action == 'update' %}warn{% else %}fail{% endif %}">{{ r.action }}</span></td></tr>{% empty %}<tr><td class="faint">{% translate "No changes." %}</td></tr>{% endfor %}</tbody></table>
+    {% elif req.status == "planning" %}<div class="empty">{% translate "Planning…" %}</div>
+    {% else %}<div class="empty">{% translate "No plan." %}</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

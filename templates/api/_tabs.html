@@ -1,0 +1,6 @@
+{% load i18n %}<nav class="subnav">
+  <a href="{% url 'account_security' %}" class="{% if tab == 'security' %}active{% endif %}">{% translate "Sign-in security" %}</a>
+  <a href="{% url 'api_tokens' %}" class="{% if tab == 'tokens' %}active{% endif %}">{% translate "API tokens" %}</a>
+  <a href="{% url 'api_triggers' %}" class="{% if tab == 'triggers' %}active{% endif %}">{% translate "Triggers" %}</a>
+  <a href="{% url 'api-docs' %}">{% translate "API documentation" %}</a>
+</nav>

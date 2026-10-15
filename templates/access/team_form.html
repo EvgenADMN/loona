@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if team %}{% blocktranslate %}Rename {{ team }}{% endblocktranslate %}{% else %}{% translate "New team" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if team %}{% blocktranslate %}Rename {{ team }}{% endblocktranslate %}{% else %}{% translate "New team" %}{% endif %}</h1></div>
+{% if user.is_superuser %}{% include "administration/_nav.html" with section="teams" %}{% endif %}
+<div class="card" style="max-width:520px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% if team %}{% url 'team_detail' team.pk %}{% else %}{% url 'team_list' %}{% endif %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

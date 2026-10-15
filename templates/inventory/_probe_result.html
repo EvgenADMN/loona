@@ -1,0 +1,6 @@
+{% if result %}
+<div class="message {% if result.level == 'ok' %}success{% elif result.level == 'warn' %}warning{% else %}error{% endif %}">
+  <strong>{{ result.summary }}</strong>
+  {% if result.detail %}<div class="faint small mono" style="margin-top:.4rem">{{ result.detail }}</div>{% endif %}
+</div>
+{% endif %}

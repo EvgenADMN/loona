@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}Delete {{ object }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:520px">
+  <h1>{% blocktranslate %}Delete {{ object }}?{% endblocktranslate %}</h1>
+  <p class="muted">{% translate "This cannot be undone." %}</p>
+  <form method="post">{% csrf_token %}
+    <div class="btn-row">
+      <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+      <a class="btn ghost" href="{{ request.META.HTTP_REFERER|default:'/' }}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

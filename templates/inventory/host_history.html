@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ host }} history - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% blocktranslate with name=host.name %}{{ name }}: history{% endblocktranslate %}</h1><p class="subtitle">{% translate "Every run that reached this host, and what it did here." %}</p></div>
+  <a class="btn ghost" href="{{ host.get_absolute_url }}">{% translate "Back to host" %}</a>
+</div>
+<div class="card">{% include "inventory/_history.html" %}</div>
+{% endblock %}

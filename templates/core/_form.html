@@ -1,0 +1,4 @@
+{% if form.non_field_errors %}
+  {% for error in form.non_field_errors %}<div class="message error">{{ error }}</div>{% endfor %}
+{% endif %}
+{% for field in form %}{% include "core/_field.html" with field=field %}{% endfor %}

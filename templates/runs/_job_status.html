@@ -1,0 +1,34 @@
+{% load i18n loona_tags %}
+<div id="job-status"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <div class="btn-row" style="align-items:center">
+    <span class="badge {{ job.status|status_badge }}">
+      {% if not job.is_final %}<span class="dot pulse"></span>{% endif %}{{ job.get_status_display }}
+    </span>
+    <span class="faint small">{% blocktranslate with started_at=job.started_at|ago %}started {{ started_at }}{% endblocktranslate %}</span>
+    <span class="faint small">· {{ job.duration|duration }}</span>
+    {% if job.return_code is not None %}<span class="faint small">{% blocktranslate with return_code=job.return_code %}· rc={{ return_code }}{% endblocktranslate %}</span>{% endif %}
+  </div>
+  {% if job.executor %}
+    <p class="small" style="margin:.5rem 0 0">{% blocktranslate with name=job.executor.name %}Carried out by executor <b>{{ name }}</b>{% endblocktranslate %}{% if job.waiting_for_executor %} {% translate "- waiting for one of its agents to take it" %}{% if not job.executor.online_agents %}; <span class="status warn"><span class="dot"></span>{% translate "none is online" %}</span>{% endif %}{% endif %}.</p>
+  {% endif %}
+  {% if job.error_message %}<div class="message error" style="margin-top:.6rem">{{ job.error_message }}</div>{% endif %}
+  {% if job.host_stats %}
+  <div class="table-wrap" style="margin-top:.8rem">
+    <table>
+      <thead><tr><th>{% translate "Host" %}</th><th>{% translate "ok" %}</th><th>{% translate "changed" %}</th><th>{% translate "unreachable" %}</th><th>{% translate "failed" %}</th><th>{% translate "skipped" %}</th></tr></thead>
+      <tbody>
+      {% for row in job.host_stats %}
+        <tr>
+          <td class="mono">{{ row.host }}</td>
+          <td>{{ row.ok }}</td>
+          <td>{% if row.changed %}<span class="count warn">{{ row.changed }}</span>{% else %}{{ row.changed }}{% endif %}</td>
+          <td>{% if row.unreachable %}<span class="count fail">{{ row.unreachable }}</span>{% else %}{{ row.unreachable }}{% endif %}</td>
+          <td>{% if row.failures %}<span class="count fail">{{ row.failures }}</span>{% else %}{{ row.failures }}{% endif %}</td>
+          <td class="faint">{{ row.skipped }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Directory groups - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Which LDAP group puts its members in which team. Teams get roles on host groups under Teams." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="split">
+  <div class="card">
+  {% if links %}
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>{% translate "Directory group" %}</th><th>{% translate "Team" %}</th><th>{% translate "Seen" %}</th><th></th></tr></thead>
+      <tbody>
+      {% for link in links %}
+        <tr>
+          <td>{{ link.name }}<div class="mono faint small">{{ link.dn }}</div></td>
+          <td>
+            <form method="post" action="{% url 'admin_directory_update' link.pk %}" class="btn-row">{% csrf_token %}
+              <select class="input" name="team" data-autosubmit style="min-width:12rem">
+                <option value="">{% translate "- no team -" %}</option>
+                {% for team in teams %}<option value="{{ team.pk }}" {% if team.pk == link.team_id %}selected{% endif %}>{{ team.name }}</option>{% endfor %}
+              </select>
+            </form>
+          </td>
+          <td class="faint small">{{ link.last_seen|ago }}</td>
+          <td style="text-align:right">
+            {% blocktranslate asvar confirm_text with name=link.name %}Forget {{ name }}? It comes back at the next sign-in of a member.{% endblocktranslate %}<form method="post" action="{% url 'admin_directory_update' link.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}
+              <button class="btn tiny ghost" type="submit" name="delete" value="1">{% translate "Forget" %}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <div class="empty">{% translate "No directory groups yet. They appear when their members sign in, or add one on the right." %}</div>
+  {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Map a group ahead of time" %}</h3></div>
+    <form method="post">{% csrf_token %}
+      {% include "core/_form.html" %}
+      <button class="btn primary" type="submit">{% translate "Add mapping" %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

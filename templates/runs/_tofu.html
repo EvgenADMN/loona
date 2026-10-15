@@ -1,0 +1,69 @@
+{% load i18n loona_tags %}{% if tofu %}
+<div class="card plan" style="margin-bottom:1rem">
+  <div class="card-head">
+    <h2>{% if job.kind == "tofu_plan" %}{% if job.tofu_destroy %}{% translate "Destroy plan" %}{% else %}{% translate "Plan" %}{% endif %}{% else %}{% translate "Applied" %}{% endif %}
+      <span class="faint small" style="font-weight:normal">
+        <span class="status ok"><span class="dot"></span>+{{ tofu.add }}</span>
+        <span class="status warn"><span class="dot"></span>~{{ tofu.change }}</span>
+        <span class="status fail"><span class="dot"></span>−{{ tofu.destroy }}</span>
+      </span>
+    </h2>
+    <div class="btn-row">
+      {% if applied_as %}
+        <span class="faint small">{% translate "Applied as" %} <a href="{{ applied_as.get_absolute_url }}">#{{ applied_as.pk }}</a></span>
+      {% elif can_apply %}
+        <form method="post" action="{% url 'plan_apply' job.pk %}">{% csrf_token %}
+          <button class="btn {% if job.tofu_destroy %}danger{% else %}primary{% endif %}" type="submit">{% if job.tofu_destroy %}{% translate "Destroy" %}{% else %}{% translate "Apply" %}{% endif %}</button>
+        </form>
+      {% elif job.kind == "tofu_plan" and job.status == "successful" and not tofu.has_changes %}
+        <span class="faint small">{% translate "Infrastructure matches the configuration. Nothing to apply." %}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% include "runs/_approval.html" %}
+  {% if can_apply %}
+    <p class="help" style="margin-top:0">{% blocktranslate with tofu_revision=job.tofu_revision|truncatechars:20 %}Applies this saved plan at revision <span class="mono">{{ tofu_revision }}</span>. OpenTofu refuses it if the state has changed since.{% endblocktranslate %}</p>
+  {% endif %}
+
+  {% for resource in tofu.resources %}
+    <details class="plan-host" {% if tofu.resources|length <= 6 %}open{% endif %}>
+      <summary>
+        <span class="status {% if resource.action == 'create' %}ok{% elif resource.action == 'update' %}warn{% else %}fail{% endif %}"><span class="dot"></span>{{ resource.action|tr }}</span>
+        <span class="mono">{{ resource.address }}</span>
+      </summary>
+      {% if resource.attributes %}
+        <div class="table-wrap" style="margin:.4rem 0 0 1.1rem">
+          <table class="attr-diff">
+            <tbody>
+            {% for a in resource.attributes %}
+              <tr>
+                <td class="mono small">{{ a.name }}</td>
+                <td class="mono small diff-del">{{ a.before|default_if_none:"" }}</td>
+                <td class="faint">→</td>
+                <td class="mono small {% if a.after == '(known after apply)' %}faint{% else %}diff-add{% endif %}">{{ a.after|default_if_none:"null" }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </details>
+  {% empty %}
+    <p class="faint small">{% translate "No resource changes." %}</p>
+  {% endfor %}
+
+  {% if tofu.hosts.created or tofu.hosts.removed or tofu.hosts.problems %}
+    <h3 style="margin-top:1rem">{% translate "Machines" %}</h3>
+    <table><tbody>
+      {% if tofu.hosts.created %}<tr><td class="faint">{% translate "Added" %}</td><td>{% for n in tofu.hosts.created %}<span class="tag">{{ n }}</span>{% endfor %} <span class="faint small">{% translate "- each gets its own key" %}{% if job.tofu_project.baseline_playbook %} {% translate "and the baseline playbook" %}{% endif %}{% translate "; see Infrastructure for progress" %}</span></td></tr>{% endif %}
+      {% if tofu.hosts.removed %}<tr><td class="faint">{% translate "Removed" %}</td><td>{% for n in tofu.hosts.removed %}<span class="tag">{{ n }}</span>{% endfor %}</td></tr>{% endif %}
+      {% for problem in tofu.hosts.problems %}<tr><td class="faint">{% translate "Note" %}</td><td class="small">{{ problem }}</td></tr>{% endfor %}
+    </tbody></table>
+  {% endif %}
+
+  {% if tofu.outputs %}
+    <h3 style="margin-top:1rem">{% translate "Outputs" %}</h3>
+    <table><tbody>{% for name, value in tofu.outputs.items %}<tr><td class="mono">{{ name }}</td><td class="mono small">{{ value }}</td></tr>{% endfor %}</tbody></table>
+  {% endif %}
+</div>
+{% endif %}

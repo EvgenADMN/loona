@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Catalog - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Catalog" %}</h1><p class="subtitle">{% translate "Ask for a machine; Loona builds it with OpenTofu, an admin approves, and it shows up in the inventory." %}</p></div>
+  {% if can_add %}<a class="btn" href="{% url 'catalog_item_create' %}">{% translate "New item" %}</a>{% endif %}
+</div>
+
+{% if items %}
+<div class="grid cols-3" style="margin-bottom:1rem">
+  {% for item in items %}
+  <div class="card">
+    <div class="card-head"><h3>{{ item.name }}</h3>{% if item.approval_required %}<span class="badge">{% translate "approval" %}</span>{% endif %}</div>
+    <p class="small muted" style="margin-top:0">{{ item.description|linebreaksbr }}</p>
+    <a class="btn primary" href="{% url 'catalog_request_new' item.pk %}">{% translate "Request" %}</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="margin-bottom:1rem"><div class="empty">{% translate "Nothing in the catalog for you yet." %}{% if can_add %} {% translate "Add an item: an OpenTofu project that creates a machine per request." %}{% endif %}</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="card-head"><h2>{% translate "My requests" %}</h2></div>
+  {% include "catalog/_requests.html" with requests=mine show_owner=False %}
+</div>
+
+{% if managed %}
+<div class="card" style="margin-top:1rem">
+  <div class="card-head"><h2>{% translate "Items you run" %}</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>{% translate "Item" %}</th><th>{% translate "Project" %}</th><th>{% translate "Hosts join" %}</th><th>{% translate "Approval" %}</th><th>{% translate "Per person" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for item in managed %}
+      <tr><td>{{ item.name }}{% if not item.enabled %} <span class="badge warn">{% translate "off" %}</span>{% endif %}</td>
+        <td><a href="{{ item.tofu_project.get_absolute_url }}">{{ item.tofu_project.name }}</a></td>
+        <td><a class="tag" href="{{ item.host_group.get_absolute_url }}">{{ item.host_group.name }}</a></td>
+        <td class="small">{{ item.approval_required|yesno:"needed,not needed" }}</td>
+        <td class="small">{{ item.max_per_user|default:"no limit" }}</td>
+        <td style="text-align:right"><a class="btn tiny ghost" href="{% url 'catalog_item_update' item.pk %}">{% translate "Edit" %}</a></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <h3 style="margin-top:1rem">{% translate "Requests from others" %}</h3>
+  {% include "catalog/_requests.html" with requests=others show_owner=True %}
+</div>
+{% endif %}
+{% endblock %}

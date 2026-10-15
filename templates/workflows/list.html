@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Workflows - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Workflows" %}</h1><p class="subtitle">{% translate "Steps run in order, with branches for success and failure: OpenTofu, playbooks, approvals, messages." %}</p></div>
+  {% if can_add %}<a class="btn primary" href="{% url 'workflow_create' %}">{% translate "New workflow" %}</a>{% endif %}
+</div>
+<div class="card">
+{% if workflows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>{% translate "Workflow" %}</th><th>{% translate "Belongs to" %}</th><th>{% translate "Last run" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for w in workflows %}
+      <tr><td><a href="{{ w.get_absolute_url }}">{{ w.name }}</a><div class="faint small">{{ w.description|truncatechars:90 }}</div></td>
+        <td><span class="tag">{{ w.host_group.name }}</span></td>
+        <td>{% if w.last_run %}<a href="{{ w.last_run.get_absolute_url }}">{% include "core/_status.html" with status=w.last_run.status label=w.last_run.get_status_display %}</a> <span class="faint small">{{ w.last_run.created_at|ago }}</span>{% else %}<span class="faint">{% translate "never" %}</span>{% endif %}</td>
+        <td style="text-align:right">{% if w.can_run %}<form method="post" action="{% url 'workflow_start' w.pk %}">{% csrf_token %}<button class="btn tiny" type="submit">{% translate "Run" %}</button></form>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+{% else %}<div class="empty">{% translate "No workflows yet." %}</div>{% endif %}
+</div>
+{% endblock %}

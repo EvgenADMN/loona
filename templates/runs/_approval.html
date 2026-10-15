@@ -1,0 +1,26 @@
+{% load i18n loona_tags %}
+{% if approval.needed or approval.given %}
+<div class="approval">
+  {% if approval.given %}
+    <p style="margin:0">
+      <span class="status {% if approval.given.approved %}ok{% else %}fail{% endif %}"><span class="dot"></span>{{ approval.given.get_decision_display }}</span>
+      {% blocktranslate with decided_by=approval.given.decided_by|default:"?" decided_at=approval.given.decided_at|ago %}by <b>{{ decided_by }}</b> {{ decided_at }}{% endblocktranslate %}{% if approval.given.comment %}: <span class="muted">{{ approval.given.comment }}</span>{% endif %}
+    </p>
+  {% else %}
+    <p style="margin:0 0 .5rem"><b>{% blocktranslate with needed=approval.needed %}Needs approval.</b> {{ needed }}{% endblocktranslate %}</p>
+    {% if approval.i_can %}
+      <form method="post" action="{% url 'plan_decide' job.pk %}">{% csrf_token %}
+        <textarea class="input" name="comment" rows="2" placeholder="Comment (optional)" style="margin-bottom:.5rem"></textarea>
+        <div class="btn-row">
+          <button class="btn primary" type="submit" name="decision" value="approve">{% translate "Approve and apply" %}</button>
+          <button class="btn danger" type="submit" name="decision" value="reject">{% translate "Reject" %}</button>
+        </div>
+      </form>
+    {% elif approval.who %}
+      <p class="help" style="margin:0">{% translate "Waiting for one of:" %} {% for u in approval.who %}<b>{{ u.get_username }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+    {% else %}
+      <p class="message error" style="margin:0">{% translate "Nobody else can approve this: give another person the Admin role on the groups it touches, or ask a superuser to relax the group's approval rule." %}</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endif %}

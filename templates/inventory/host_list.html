@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Hosts - Inventory - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Inventory" %}</h1><p class="subtitle">{% blocktranslate count counter=paginator.count %}{{ counter }} managed machine{% plural %}{{ counter }} managed machines{% endblocktranslate %}</p></div>
+  {% if access.manages_inventory %}<a class="btn primary" href="{% url 'host_create' %}">{% translate "Add host" %}</a>{% endif %}
+</div>
+{% include "inventory/_tabs.html" with tab="hosts" %}
+
+<div class="card tight" style="margin-bottom:1rem">
+  <form method="get" class="btn-row">
+    <input class="input" type="text" name="q" value="{{ q }}" placeholder="{% translate "Search: web01, os:ubuntu, ram>=8, ip:10.0." %}" style="max-width:360px">
+    <select class="input" name="group" style="max-width:220px">
+      <option value="">{% translate "All groups" %}</option>
+      {% for group in groups %}
+        <option value="{{ group.pk }}" {% if active_group == group.pk|stringformat:"s" %}selected{% endif %}>{{ group.name }} ({{ group.n }})</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">{% translate "Filter" %}</button>
+    {% if q or active_group %}<a class="btn ghost" href="{% url 'host_list' %}">{% translate "Reset" %}</a>{% endif %}
+  </form>
+  {% for error in search_errors %}<div class="message error" style="margin-top:.5rem">{{ error }}</div>{% endfor %}
+  <details class="small" style="margin-top:.5rem"{% if search_errors %} open{% endif %}>
+    <summary class="faint">{% translate "Search syntax" %}</summary>
+    <table style="margin-top:.3rem"><tbody>
+    {% for example, meaning in search_help %}<tr><td class="mono">{{ example }}</td><td class="faint">{{ meaning }}</td></tr>{% endfor %}
+    <tr><td class="mono">{% translate "-word, os!=windows" %}</td><td class="faint">{% blocktranslate %}leave out what matches; words are combined with AND, "quote" values with spaces{% endblocktranslate %}</td></tr>
+    </tbody></table>
+  </details>
+</div>
+
+<div class="card">
+{% if hosts %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Name" %}</th><th>{% translate "Address" %}</th><th>{% translate "System" %}</th><th>{% translate "Groups" %}</th><th>{% translate "Key" %}</th><th>{% translate "Credential" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for host in hosts %}
+      <tr>
+        <td>
+          <a href="{{ host.get_absolute_url }}">{{ host.name }}</a>
+          {% if not host.enabled %}<span class="badge warn">{% translate "disabled" %}</span>{% endif %}
+        </td>
+        <td class="mono faint">{{ host.ansible_host }}:{{ host.port }}</td>
+        <td class="small">{% with f=host.facts %}{% if f %}{{ f.os|default:"?" }}<div class="faint">{% if f.cpu_count %}{% blocktranslate with cpu_count=f.cpu_count %}{{ cpu_count }} vCPU{% endblocktranslate %}{% endif %}{% if f.memory_mb %} {% blocktranslate with memory_gb=f.memory_gb %}· {{ memory_gb }} GB{% endblocktranslate %}{% endif %}{% if f.default_ipv4 and f.default_ipv4 != host.ansible_host %} · <span class="mono">{{ f.default_ipv4 }}</span>{% endif %}</div>{% else %}<span class="faint">-</span>{% endif %}{% endwith %}</td>
+        <td>{% for group in host.groups.all %}{% if group.pk in access.visible_groups %}<a class="tag" href="{% url 'group_detail' group.pk %}">{{ group.name }}</a>{% else %}<span class="tag">{{ group.name }}</span>{% endif %}{% empty %}<span class="faint">-</span>{% endfor %}</td>
+        <td>
+          {% if host.pk not in access.admin_hosts %}
+            {% if host.managed_key %}<span class="status {{ host.managed_key.badge }}"><span class="dot"></span>{{ host.managed_key.get_status_display }}</span>{% else %}<span class="faint">-</span>{% endif %}
+          {% elif host.managed_key %}
+            <a href="{% url 'host_key' host.pk %}"><span class="status {{ host.managed_key.badge }}"><span class="dot"></span>{{ host.managed_key.get_status_display }}</span></a>
+          {% else %}
+            <a class="faint small" href="{% url 'host_key' host.pk %}">{% translate "set up" %}</a>
+          {% endif %}
+        </td>
+        <td class="faint small">{{ host.credential|default:"-" }}</td>
+        <td style="text-align:right">{% if host.pk in access.admin_hosts %}<a class="btn tiny ghost" href="{% url 'host_update' host.pk %}">{% translate "Edit" %}</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="empty">{% translate "No hosts match." %}{% if access.manages_inventory %}<br><a href="{% url 'host_create' %}">{% translate "Add the first one" %}</a>.{% endif %}</div>
+{% endif %}
+</div>
+
+{% if is_paginated %}
+<div class="btn-row" style="margin-top:1rem;justify-content:center">
+  {% if page_obj.has_previous %}<a class="btn" href="{% query_string page=page_obj.previous_page_number %}">{% translate "Previous" %}</a>{% endif %}
+  <span class="faint small">{% blocktranslate with number=page_obj.number num_pages=paginator.num_pages %}Page {{ number }} of {{ num_pages }}{% endblocktranslate %}</span>
+  {% if page_obj.has_next %}<a class="btn" href="{% query_string page=page_obj.next_page_number %}">{% translate "Next" %}</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

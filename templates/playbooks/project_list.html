@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Projects - Playbooks - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Playbooks" %}</h1><p class="subtitle">{% translate "Projects hold roles, templates and whole playbook files - from Git, or edited here." %}</p></div>
+  {% if access.edit_playbooks %}<a class="btn primary" href="{% url 'project_create' %}">{% translate "New project" %}</a>{% endif %}
+</div>
+{% include "playbooks/_tabs.html" with tab="projects" %}
+<div class="card">
+{% if projects %}
+  <table><tbody>
+  {% for p in projects %}
+    <tr>
+      <td><a href="{{ p.get_absolute_url }}">{{ p.name }}</a>{% if p.description %}<div class="faint small">{{ p.description }}</div>{% endif %}</td>
+      <td class="faint small">{% if p.is_git %}<span class="mono">{{ p.git_url|truncatechars:50 }}</span> · {{ p.git_ref|default:"HEAD" }}{% else %}{% translate "files in Loona" %}{% endif %}</td>
+      <td class="faint small">{% blocktranslate count counter=p.playbooks.all|length %}{{ counter }} playbook{% plural %}{{ counter }} playbooks{% endblocktranslate %}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+{% else %}<div class="empty">{% translate "No projects. A playbook that needs roles, templates or files, or lives in Git, gets one." %}</div>{% endif %}
+</div>
+{% endblock %}

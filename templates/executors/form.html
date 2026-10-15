@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "New executor - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "New executor" %}</h1><p class="subtitle">{% translate "Loona makes a token for its agents on the next page." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="card" style="max-width:44rem">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row"><button class="btn primary" type="submit">{% translate "Create executor" %}</button><a class="btn ghost" href="{% url 'executor_list' %}">{% translate "Cancel" %}</a></div>
+  </form>
+</div>
+{% endblock %}

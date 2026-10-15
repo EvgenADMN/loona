@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Overview - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% translate "Overview" %}</h1>
+    <p class="subtitle">
+      {% if running %}{% blocktranslate count counter=running %}{{ counter }} job in flight.{% plural %}{{ counter }} jobs in flight.{% endblocktranslate %}{% else %}{% translate "Nothing running right now." %}{% endif %}
+      {% translate "Runner mode:" %} <span class="badge">{{ LOONA_RUNNER_MODE }}</span>
+    </p>
+  </div>
+  <div class="btn-row">
+    {% if access.manages_inventory %}<a class="btn" href="{% url 'host_create' %}">{% translate "Add host" %}</a>{% endif %}
+    {% if access.add_playbooks %}<a class="btn primary" href="{% url 'playbook_create' %}">{% translate "New playbook" %}</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid cols-5" style="margin-bottom:1rem">
+  <a class="card stat" href="{% url 'playbook_list' %}"><span class="value">{{ counts.playbooks }}</span><span class="label">{% translate "Playbooks" %}</span></a>
+  <a class="card stat" href="{% url 'host_list' %}"><span class="value">{{ counts.hosts }}</span><span class="label">{% translate "Hosts" %}</span></a>
+  <a class="card stat" href="{% url 'group_list' %}"><span class="value">{{ counts.groups }}</span><span class="label">{% translate "Groups" %}</span></a>
+  <a class="card stat" {% if access.manage_credentials %}href="{% url 'credential_list' %}"{% endif %}><span class="value">{{ counts.credentials }}</span><span class="label">{% translate "Credentials" %}</span></a>
+  <a class="card stat" href="{% url 'job_list' %}"><span class="value">{{ counts.jobs }}</span><span class="label">{% translate "Jobs" %}</span></a>
+</div>
+
+{% if drifting %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h2>{% translate "Drift" %}</h2><a class="small" href="{% url 'drift_list' %}">{% translate "All checks" %}</a></div>
+  <table><tbody>
+  {% for check in drifting %}
+    <tr>
+      <td>{{ check.name }}</td>
+      <td><span class="status {{ check.badge }}"><span class="dot"></span>{{ check.get_status_display }}</span> <span class="faint small mono">{{ check.drifted|join:", "|truncatechars:60 }}</span></td>
+      <td class="small" style="text-align:right">{% if check.last_job %}<a href="{{ check.last_job.get_absolute_url }}">{% translate "what changed" %}</a>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+{% if awaiting_me %}
+<div class="card" style="margin-bottom:1rem">
+  <div class="card-head"><h2>{% translate "Waiting for your approval" %}</h2><span class="faint small">{{ awaiting_me|length }}</span></div>
+  <table><tbody>
+  {% for job in awaiting_me %}
+    <tr>
+      <td><a href="{{ job.get_absolute_url }}">#{{ job.pk }} {{ job.playbook_name }}</a></td>
+      <td class="faint small">{% with t=job.stats.tofu %}{% if t %}+{{ t.add }} ~{{ t.change }} −{{ t.destroy }}{% else %}{% translate "preview" %}{% endif %}{% endwith %}</td>
+      <td class="faint small" style="text-align:right">{{ job.created_by|default:"?" }} · {{ job.created_at|ago }}</td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+{% endif %}
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{% translate "Recent jobs" %}</h2><a class="small" href="{% url 'job_list' %}">{% translate "All jobs" %}</a></div>
+    {% if recent_jobs %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{% translate "Job" %}</th><th>{% translate "Status" %}</th><th>{% translate "Started" %}</th><th>{% translate "Duration" %}</th></tr></thead>
+        <tbody>
+        {% for job in recent_jobs %}
+          <tr>
+            <td><a href="{{ job.get_absolute_url }}">#{{ job.pk }} {{ job.playbook_name }}</a></td>
+            <td>{% include "core/_status.html" with status=job.status label=job.get_status_display %}</td>
+            <td class="faint small">{{ job.started_at|ago }}</td>
+            <td class="faint small">{{ job.duration|duration }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="empty">{% translate "No jobs yet. Build a playbook, then run it against a group." %}</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>{% translate "Biggest groups" %}</h2><a class="small" href="{% url 'group_list' %}">{% translate "Manage" %}</a></div>
+    {% if top_groups %}
+      <table>
+        <tbody>
+        {% for group in top_groups %}
+          <tr>
+            <td><a href="{{ group.get_absolute_url }}">{{ group.name }}</a></td>
+            <td style="text-align:right" class="faint">{% blocktranslate count counter=group.n %}{{ counter }} host{% plural %}{{ counter }} hosts{% endblocktranslate %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">{% translate "No groups yet." %}{% if access.manages_inventory %}<br><a href="{% url 'group_create' %}">{% translate "Create one" %}</a> {% translate "to target hosts in a couple of clicks." %}{% endif %}</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

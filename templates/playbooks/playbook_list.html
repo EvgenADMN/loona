@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Playbooks - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Playbooks" %}</h1><p class="subtitle">{% translate "Build them visually or write the YAML yourself - switch whenever you like." %}</p></div>
+  {% if access.add_playbooks %}<a class="btn primary" href="{% url 'playbook_create' %}">{% translate "New playbook" %}</a>{% endif %}
+</div>
+{% include "playbooks/_tabs.html" with tab="playbooks" %}
+
+<div class="card tight" style="margin-bottom:1rem">
+  <form method="get" class="btn-row">
+    <input class="input" type="text" name="q" value="{{ q }}" placeholder="{% translate "Search playbooks" %}" style="max-width:320px">
+    <button class="btn" type="submit">{% translate "Search" %}</button>
+    {% if q %}<a class="btn ghost" href="{% url 'playbook_list' %}">{% translate "Reset" %}</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+{% if playbooks %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Name" %}</th><th>{% translate "Mode" %}</th><th>{% translate "Tasks" %}</th><th>{% translate "Updated" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for playbook in playbooks %}
+      <tr>
+        <td>
+          <a href="{{ playbook.get_absolute_url }}">{{ playbook.name }}</a>
+          {% if playbook.description %}<div class="faint small">{{ playbook.description|truncatechars:90 }}</div>{% endif %}
+        </td>
+        <td><span class="badge {% if playbook.is_graphical %}accent{% endif %}">{{ playbook.get_mode_display }}</span></td>
+        <td class="faint">{% if playbook.is_graphical %}{{ playbook.task_count }}{% else %}-{% endif %}</td>
+        <td class="faint small">{{ playbook.updated_at|ago }}</td>
+        <td style="text-align:right">{% if access.runs_playbooks %}<a class="btn tiny primary" href="{% url 'job_launch' playbook.pk %}">{% translate "Run" %}</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<div class="empty">{% translate "No playbooks yet." %}{% if access.add_playbooks %} <a href="{% url 'playbook_create' %}">{% translate "Create the first one" %}</a>.{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

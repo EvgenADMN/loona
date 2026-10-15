@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}SSH key for {{ host }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% blocktranslate with name=host.name %}SSH key for {{ name }}{% endblocktranslate %}</h1>
+    <p class="subtitle mono">{{ host.ansible_host }}:{{ host.port }}</p>
+  </div>
+  <div class="btn-row">
+    <a class="btn ghost" href="{% url 'host_detail' host.pk %}">{% translate "Back to host" %}</a>
+  </div>
+</div>
+
+<div class="split">
+  {% include "inventory/_key_panel.html" %}
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Why one key per host" %}</h3></div>
+      <p class="faint small">
+        {% blocktranslate trimmed %}Loona generates its own Ed25519 keypair for every machine and adds only that key
+        to that account's <span class="mono">authorized_keys</span>, leaving keys it did
+        not put there alone. A key that leaks therefore opens exactly this one server,
+        not the fleet.{% endblocktranslate %}
+      </p>
+      <p class="faint small">
+        {% blocktranslate trimmed %}The login and password are used for the push and nothing else: they are encrypted
+        onto the job and wiped the moment the run ends. Afterwards Loona reaches this host
+        with the generated key. Privilege escalation for real playbooks still comes from
+        the host's credential.{% endblocktranslate %}
+      </p>
+      <p class="faint small">
+        {% blocktranslate trimmed %}Checking the connection changes nothing on the far end and is answered right here.
+        Deleting the host offers to take the key back off the server first.{% endblocktranslate %}
+      </p>
+    </div>
+
+    <div style="margin-top:1rem">{% include "inventory/_key_runs.html" %}</div>
+  </div>
+</div>
+{% endblock %}

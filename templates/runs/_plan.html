@@ -1,0 +1,52 @@
+{% load i18n %}<div class="card plan" style="margin-bottom:1rem">
+  <div class="card-head">
+    <h2>{% translate "Preview" %}</h2>
+    <div class="btn-row">
+      {% if applied_as %}
+        <span class="faint small">{% translate "Applied as" %} <a href="{{ applied_as.get_absolute_url }}">#{{ applied_as.pk }}</a></span>
+      {% elif can_apply %}
+        <form method="post" action="{% url 'plan_apply' job.pk %}">{% csrf_token %}
+          <button class="btn primary" type="submit">{% translate "Apply these changes" %}</button>
+        </form>
+      {% elif job.status != "successful" %}
+        <span class="faint small">{% translate "The preview did not finish cleanly, so it cannot be applied." %}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% include "runs/_approval.html" %}
+  {% if can_apply %}
+    <p class="help" style="margin-top:0">
+      {% blocktranslate count counter=plan|length %}Applying runs this exact playbook snapshot on this host only{% plural %}Applying runs this exact playbook snapshot on these {{ counter }} hosts only{% endblocktranslate %}{% if playbook_moved_on %} {% translate "- the playbook has been edited since, and the edits are not part of it" %}{% endif %}.
+      {% translate "Commands and scripts do not run in a preview; skipped tasks may still do something when applied." %}
+    </p>
+  {% endif %}
+
+  {% for host in plan %}
+    <details class="plan-host" {% if host.changes or host.failed or host.unreachable %}open{% endif %}>
+      <summary>
+        <span class="mono">{{ host.host }}</span>
+        {% if host.unreachable %}<span class="status fail"><span class="dot"></span>{% translate "unreachable" %}</span>
+        {% elif host.failed %}<span class="status fail"><span class="dot"></span>{% blocktranslate with failed=host.failed|length %}{{ failed }} failed{% endblocktranslate %}</span>{% endif %}
+        {% if host.changes %}<span class="status warn"><span class="dot"></span>{% blocktranslate with changes=host.changes|length %}{{ changes }} to change{% endblocktranslate %}</span>
+        {% elif not host.failed and not host.unreachable %}<span class="status ok"><span class="dot"></span>{% translate "no changes" %}</span>{% endif %}
+        <span class="faint small">{% blocktranslate with unchanged=host.unchanged %}{{ unchanged }} unchanged{% endblocktranslate %}{% if host.skipped %} {% blocktranslate with skipped=host.skipped %}· {{ skipped }} skipped{% endblocktranslate %}{% endif %}</span>
+      </summary>
+      {% for task in host.failed %}<div class="plan-task"><span class="status fail"><span class="dot"></span>{{ task }}</span></div>{% endfor %}
+      {% for change in host.changes %}
+        <div class="plan-task">
+          <div class="plan-task-name">{{ change.task }}</div>
+          {% for block in change.blocks %}
+            <div class="diff">
+              {% if block.header %}<div class="diff-header mono">{{ block.header }}</div>{% endif %}
+              <pre>{% for kind, text in block.lines %}<span class="diff-{{ kind }}">{{ text }}</span>{% endfor %}{% if block.truncated %}<span class="diff-hunk">… longer than Loona shows</span>{% endif %}</pre>
+            </div>
+          {% empty %}
+            <div class="faint small">{% translate "No diff reported by this module." %}</div>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </details>
+  {% empty %}
+    <p class="faint small">{% translate "The preview reached no hosts." %}</p>
+  {% endfor %}
+</div>

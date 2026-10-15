@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Notifications - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Where Loona tells people about failed runs, plans waiting for approval, drift and new machines." %}</p></div>
+  <a class="btn primary" href="{% url 'admin_channel_create' %}">{% translate "New channel" %}</a>
+</div>
+{% include "administration/_nav.html" %}
+{% if not public_url %}<div class="message info">{% translate "Messages carry links once" %} <a href="{% url 'admin_general' %}">{% translate "Loona's address" %}</a> {% translate "is set." %}</div>{% endif %}
+<div class="split">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>{% translate "Channels" %}</h2></div>
+      {% if channels %}
+        <table><tbody>
+        {% for c in channels %}
+          <tr>
+            <td><a href="{% url 'admin_channel_edit' c.pk %}">{{ c.name }}</a>{% if not c.enabled %} <span class="badge">{% translate "off" %}</span>{% endif %}
+              <div class="faint small">{{ c.get_kind_display }} · {% blocktranslate count counter=c.events|length %}{{ counter }} event{% plural %}{{ counter }} events{% endblocktranslate %}{% with groups=c.host_groups.all %}{% if groups %} · {% for g in groups %}{{ g.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% endwith %}</div>
+            </td>
+            <td style="text-align:right">
+              <div class="btn-row" style="justify-content:flex-end">
+                <form method="post" action="{% url 'admin_channel_test' c.pk %}">{% csrf_token %}<button class="btn tiny" type="submit">{% translate "Send test" %}</button></form>
+                {% blocktranslate asvar confirm_text with name=c.name %}Remove {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'admin_channel_delete' c.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% translate "Remove" %}</button></form>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<div class="empty">{% translate "No channels yet. Add an email list, a Telegram chat or a webhook." %}</div>{% endif %}
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h2>{% translate "Recent deliveries" %}</h2></div>
+      {% if deliveries %}
+        <table><tbody>
+        {% for d in deliveries %}
+          <tr>
+            <td class="faint small" style="white-space:nowrap">{{ d.created_at|ago }}</td>
+            <td class="small">{{ d.subject }}<div class="faint small">{{ d.channel.name }}</div>{% if d.error %}<div class="small mono" style="color:var(--text-dim)">{{ d.error|truncatechars:160 }}</div>{% endif %}</td>
+            <td><span class="status {% if d.status == 'sent' %}ok{% elif d.status == 'failed' %}fail{% else %}run{% endif %}"><span class="dot"></span>{{ d.get_status_display }}{% if d.attempts > 1 %} {% blocktranslate with attempts=d.attempts %}({{ attempts }} tries){% endblocktranslate %}{% endif %}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<p class="faint small" style="margin:0">{% translate "Nothing sent yet." %}</p>{% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Outgoing mail" %}</h3></div>
+    <form method="post">{% csrf_token %}
+      {% include "core/_form.html" with form=smtp %}
+      {% if has_smtp_password %}<p class="faint small" style="margin-top:-.5rem">{% translate "A password is stored." %}</p>{% endif %}
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

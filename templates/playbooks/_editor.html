@@ -1,0 +1,13 @@
+{% comment %}Everything the editor switch replaces: the head, whichever editor is
+current, and anywhere a failed switch has to explain itself.{% endcomment %}
+<div id="editor">
+  {% include "playbooks/_playbook_head.html" %}
+  {% if switch_error %}<div class="message error">{{ switch_error }}</div>{% endif %}
+  {% if playbook.mode == "file" %}
+    {% include "playbooks/_editor_file.html" %}
+  {% elif playbook.is_graphical %}
+    {% include "playbooks/_editor_graphical.html" %}
+  {% else %}
+    {% include "playbooks/_editor_text.html" %}
+  {% endif %}
+</div>

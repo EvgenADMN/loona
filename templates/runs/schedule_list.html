@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags tz %}
+{% block title %}{% translate "Schedules - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Schedules" %}</h1><p class="subtitle">{% translate "Playbooks and workflows started at set times, as the person who scheduled them. Outside a group's maintenance windows a run becomes a preview that waits for approval." %}</p></div>
+  {% if can_create %}<a class="btn primary" href="{% url 'schedule_create' %}">{% translate "New schedule" %}</a>{% endif %}
+</div>
+<div class="card">
+{% if schedules %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Schedule" %}</th><th>{% translate "When" %}</th><th>{% translate "Next" %}</th><th>{% translate "Last" %}</th><th></th></tr></thead>
+    <tbody>
+    {% for s in schedules %}
+      <tr>
+        <td>
+          {{ s.name }}
+          <div class="faint small">{% if s.workflow %}{% translate "workflow" %} <a href="{{ s.workflow.get_absolute_url }}">{{ s.workflow.name }}</a>{% else %}{% blocktranslate with name=s.playbook.name %}{{ name }} on{% endblocktranslate %} <span class="tag">{{ s.host_group.name }}</span>{% endif %}{% if s.action == "preview" %} {% translate "· preview only" %}{% endif %} {% blocktranslate with run_as=s.run_as %}· as {{ run_as }}{% endblocktranslate %}{% if not s.enabled %} {% blocktranslate %}· <b>paused</b>{% endblocktranslate %}{% endif %}</div>
+        </td>
+        <td class="mono small">{{ s.cron }}<div class="faint">{{ s.timezone }}</div></td>
+        <td class="small">{% if s.enabled and s.next_run_at %}{{ s.next_run_at|timezone:s.timezone|date:"D Y-m-d H:i" }}{% elif s.enabled %}<span class="faint">{% translate "never" %}</span>{% else %}<span class="faint">-</span>{% endif %}</td>
+        <td class="small">
+          {% with last=s.last_started %}{% if last %}<a href="{{ last.get_absolute_url }}">#{{ last.pk }}</a> <span class="badge {{ last.status|status_badge }}">{{ last.get_status_display }}</span> {{ s.last_run_at|ago }}{% else %}<span class="faint">{% translate "never" %}</span>{% endif %}{% endwith %}
+          {% if s.last_note %}<div class="faint small" style="max-width:28rem">{{ s.last_note }}</div>{% endif %}
+        </td>
+        <td style="text-align:right">
+          {% if s.manageable %}
+          <div class="btn-row" style="justify-content:flex-end">
+            <form method="post" action="{% url 'schedule_run' s.pk %}">{% csrf_token %}<button class="btn tiny" type="submit">{% translate "Run now" %}</button></form>
+            <form method="post" action="{% url 'schedule_toggle' s.pk %}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% if s.enabled %}{% translate "Pause" %}{% else %}{% translate "Resume" %}{% endif %}</button></form>
+            <a class="btn tiny ghost" href="{% url 'schedule_update' s.pk %}">{% translate "Edit" %}</a>
+            {% blocktranslate asvar confirm_text with name=s.name %}Delete the schedule {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'schedule_delete' s.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% translate "Delete" %}</button></form>
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}<div class="empty">{% translate "Nothing is scheduled." %}{% if can_create %} <a href="{% url 'schedule_create' %}">{% translate "Schedule a playbook" %}</a>.{% endif %}</div>{% endif %}
+</div>
+{% endblock %}

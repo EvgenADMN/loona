@@ -1,0 +1,4 @@
+{% load i18n %}<nav class="subnav">
+  <a href="{% url 'host_list' %}" class="{% if tab == 'hosts' %}active{% endif %}">{% translate "Hosts" %}</a>
+  <a href="{% url 'group_list' %}" class="{% if tab == 'groups' %}active{% endif %}">{% translate "Groups" %}</a>
+</nav>

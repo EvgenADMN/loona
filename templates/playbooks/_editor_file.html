@@ -1,0 +1,10 @@
+{% load i18n %}<div class="card">
+  <div class="card-head">
+    <h2 class="mono">{{ playbook.file_path }}</h2>
+    <span class="faint small">
+      {% if playbook.project.is_git %}{% blocktranslate with git_url=playbook.project.git_url %}read from <span class="mono">{{ git_url }}</span> at every run; a preview pins the commit{% endblocktranslate %}
+      {% else %}{% translate "in project" %} <a href="{{ playbook.project.get_absolute_url }}">{{ playbook.project.name }}</a>{% endif %}
+    </span>
+  </div>
+  <pre class="yaml">{{ generated_yaml }}</pre>
+</div>

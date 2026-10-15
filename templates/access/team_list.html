@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Teams - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Teams" %}</h1><p class="subtitle">{% translate "A team gets a role on host groups; its members get that role on every host inside." %}</p></div>
+  <a class="btn primary" href="{% url 'team_create' %}">{% translate "New team" %}</a>
+</div>
+{% if user.is_superuser %}{% include "administration/_nav.html" with section="teams" %}{% endif %}
+<div class="card">
+{% if teams %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Name" %}</th><th>{% translate "Members" %}</th><th>{% translate "Roles" %}</th><th>{% translate "Source" %}</th></tr></thead>
+    <tbody>
+    {% for team in teams %}
+      <tr>
+        <td><a href="{% url 'team_detail' team.pk %}">{{ team.name }}</a></td>
+        <td class="faint">{{ team.members }}</td>
+        <td class="faint">{{ team.roles }}</td>
+        <td>{% if team.ldap %}<span class="badge accent">{% translate "LDAP" %}</span>{% else %}<span class="faint small">{% translate "local" %}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<div class="empty">{% translate "No teams yet." %} <a href="{% url 'team_create' %}">{% translate "Create one" %}</a>{% translate ", or switch on LDAP and let directory groups become teams." %}</div>{% endif %}
+</div>
+{% endblock %}

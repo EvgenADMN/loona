@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Set up one-time codes - Loona" %}{% endblock %}
+{% block content %}
+<div style="max-width:560px;margin:5vh auto">
+  <div class="page-head"><div>
+    <h1>{% translate "Set up one-time codes" %}</h1>
+    <p class="subtitle">{% if required %}{% blocktranslate with name=who.get_username %}Your account ({{ name }}) needs a code from an authenticator app at every sign-in.{% endblocktranslate %}{% else %}{% translate "A code from your phone at every sign-in, on top of the password." %}{% endif %}</p>
+  </div></div>
+  <div class="card">
+    <ol class="steps">
+      <li>{% translate "Open an authenticator app - Google Authenticator, Microsoft Authenticator, FreeOTP, Aegis, 1Password, Bitwarden." %}</li>
+      <li>{% translate "Scan this code, or type the key by hand:" %}
+        <div class="totp-qr">{{ qr|safe }}</div>
+        <div class="mono small" style="word-break:break-all;margin-top:.4rem">{{ secret }}</div>
+      </li>
+      <li>{% translate "Type the six digits the app shows now:" %}</li>
+    </ol>
+    <form method="post">{% csrf_token %}
+      {% include "core/_form.html" %}
+      <button class="btn primary" type="submit">{% translate "Turn on" %}</button>
+      {% if not required %}<a class="btn ghost" href="{% url 'account_security' %}">{% translate "Cancel" %}</a>{% endif %}
+    </form>
+  </div>
+</div>
+{% endblock %}

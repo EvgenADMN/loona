@@ -1,0 +1,94 @@
+{% load i18n loona_tags %}
+<div class="card" id="key-panel"
+     {% if pending_job %}hx-get="{% url 'host_key_status' host.pk %}" hx-trigger="every 2s" hx-swap="outerHTML"{% endif %}>
+  <div class="card-head">
+    <h2>{% translate "Loona's key on this host" %}</h2>
+    {% if key %}
+      <span class="badge {{ key.badge }}">
+        {% if pending_job %}<span class="dot pulse"></span>{% endif %}{{ key.get_status_display }}
+      </span>
+    {% endif %}
+  </div>
+
+  {% if pending_job %}
+    <div class="message">
+      {% blocktranslate with playbook_name=pending_job.playbook_name %}{{ playbook_name }} is running.{% endblocktranslate %}
+      <a href="{{ pending_job.get_absolute_url }}">{% translate "Open the full log" %}</a> {% blocktranslate trimmed %}— or stay here,
+      this panel updates itself.{% endblocktranslate %}
+    </div>
+  {% endif %}
+
+  {% if key %}
+    <table>
+      <tbody>
+        <tr><td class="faint">{% translate "Account" %}</td><td class="mono">{{ key.username }}</td></tr>
+        <tr><td class="faint">{% translate "Fingerprint" %}</td><td class="mono small">{{ key.fingerprint }}</td></tr>
+        <tr><td class="faint">{% translate "Installed" %}</td><td class="faint small">{% if key.installed_at %}{{ key.installed_at|ago }}{% else %}{% translate "not yet" %}{% endif %}</td></tr>
+        <tr><td class="faint">{% translate "Verified" %}</td><td class="faint small">{% if key.verified_at %}{{ key.verified_at|ago }}{% else %}{% translate "not yet" %}{% endif %}</td></tr>
+      </tbody>
+    </table>
+    {% if key.error_message %}<div class="message error" style="margin-top:.8rem">{{ key.error_message }}</div>{% endif %}
+    <details style="margin-top:.8rem">
+      <summary class="faint small">{% translate "Public key" %}</summary>
+      <pre class="yaml" style="white-space:pre-wrap;word-break:break-all">{{ key.public_key }}</pre>
+    </details>
+  {% else %}
+    <div class="empty">
+      {% blocktranslate trimmed with name=host.name %}Loona has no key for {{ name }} yet.<br>
+      Add one below and this host stops depending on a shared credential.{% endblocktranslate %}
+    </div>
+  {% endif %}
+
+  {% if not pending_job %}
+    <div style="margin-top:1rem;border-top:1px solid var(--line);padding-top:1rem">
+      <h3>{% if key.is_installed %}{% translate "Re-push, check or remove" %}{% else %}{% translate "Add Loona's key" %}{% endif %}</h3>
+
+      {% if sshpass_missing %}
+        <div class="message warning">
+          {% blocktranslate trimmed %}The <span class="mono">sshpass</span> program is missing on the Loona server, so
+          password logins will not work. Install it, or point this host at a credential
+          that already carries a private key.{% endblocktranslate %}
+        </div>
+      {% endif %}
+
+      <form hx-post="{% url 'host_key_provision' host.pk %}"
+            hx-target="#key-panel" hx-swap="outerHTML"
+            hx-indicator="#key-spinner">
+        <input type="hidden" name="host" value="{{ host.pk }}">
+        {% include "core/_form.html" %}
+        <div class="btn-row" style="margin-top:1rem;align-items:center">
+          <button class="btn" type="button"
+                  hx-post="{% url 'host_probe' %}"
+                  hx-include="closest form"
+                  hx-target="#probe-result"
+                  hx-swap="innerHTML"
+                  hx-indicator="#probe-spinner">{% translate "Check connection" %}</button>
+          <button class="btn primary" type="submit">
+            {% if key.is_installed %}{% translate "Re-push the key" %}{% else %}{% translate "Add key" %}{% endif %}
+          </button>
+          <span id="probe-spinner" class="faint small htmx-indicator">{% translate "checking..." %}</span>
+          <span id="key-spinner" class="faint small htmx-indicator">{% translate "starting..." %}</span>
+        </div>
+      </form>
+      <div id="probe-result" style="margin-top:.8rem"></div>
+
+      {% if key %}
+        <div class="btn-row" style="margin-top:1rem">
+          <form hx-post="{% url 'host_key_revoke' host.pk %}" hx-target="#key-panel" hx-swap="outerHTML">
+            <button class="btn danger tiny" type="submit">
+              {% if key.is_installed %}{% translate "Remove key from server" %}{% else %}{% translate "Discard unused keypair" %}{% endif %}
+            </button>
+          </form>
+          {% if key.status == 'revoke_failed' %}
+            <form hx-post="{% url 'host_key_forget' host.pk %}" hx-target="#key-panel" hx-swap="outerHTML">
+              <button class="btn ghost tiny" type="submit">{% translate "Forget it anyway" %}</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{# The runs list sits in the other column, so it is refreshed out of band. #}
+{% if oob %}{% include "inventory/_key_runs.html" with oob=1 %}{% endif %}

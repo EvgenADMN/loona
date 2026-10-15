@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ title }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="subtitle">{% translate "in" %} <a href="{{ playbook.get_absolute_url }}">{{ playbook.name }}</a></p>
+  </div>
+</div>
+
+<form method="post">{% csrf_token %}
+  {% if form.non_field_errors %}{% for error in form.non_field_errors %}<div class="message error">{{ error }}</div>{% endfor %}{% endif %}
+
+  <div class="split">
+    <div class="card">
+      <div class="card-head"><h2>{% translate "Module" %}</h2></div>
+
+      <div class="field" style="margin-bottom:0">
+        <label for="module-search">{% translate "Find a module" %}</label>
+        <input type="search" class="input" id="module-search" name="q" autocomplete="off"
+               placeholder="{% translate "Search every installed module: apt, copy, docker_container, ufw…" %}"
+               hx-get="{% url 'module_search' playbook.pk %}"
+               hx-trigger="input changed delay:250ms, focus once"
+               hx-target="#module-results"
+               hx-vals='{"task": "{{ task.pk|default:''|escapejs }}"}'
+               hx-indicator="#field-spinner"
+               x-data
+               @keydown.enter.prevent="$el.value.trim() && htmx.ajax('GET',
+                 '{% url 'task_fields' playbook.pk %}?module=' + encodeURIComponent($el.value.trim()){% if task %} + '&task={{ task.pk|escapejs }}'{% endif %},
+                 {target: '#module-panel', swap: 'innerHTML'}).then(() => { $el.value = ''; document.getElementById('module-results').innerHTML = '' })">
+        <div class="help">{% translate "Changing the module reloads its arguments." %} <span id="field-spinner" class="htmx-indicator">{% translate "loading…" %}</span></div>
+        <div id="module-results"></div>
+      </div>
+
+      <div id="module-panel">
+        {% include "playbooks/_task_fields.html" %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Task options" %}</h3></div>
+      {% include "core/_field.html" with field=form.name %}
+      {% include "core/_field.html" with field=form.when %}
+      {% include "core/_field.html" with field=form.loop %}
+      {% include "core/_field.html" with field=form.register %}
+      {% include "core/_field.html" with field=form.tags %}
+      {% include "core/_field.html" with field=form.become %}
+      {% include "core/_field.html" with field=form.ignore_errors %}
+      {% include "core/_field.html" with field=form.enabled %}
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-top:1rem">
+    <button class="btn primary" type="submit">{% translate "Save task" %}</button>
+    {% if not task %}<button class="btn" type="submit" name="add_another" value="1">{% translate "Save and add another" %}</button>{% endif %}
+    <a class="btn ghost" href="{{ playbook.get_absolute_url }}">{% translate "Cancel" %}</a>
+    {% if task %}
+      <span style="margin-left:auto"></span>
+    {% endif %}
+  </div>
+</form>
+
+{% if task %}
+{% translate "Remove this task?" as confirm_text %}<form method="post" action="{% url 'task_delete' task.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:.6rem">{% csrf_token %}
+  <button class="btn danger" type="submit">{% translate "Delete task" %}</button>
+</form>
+{% endif %}
+{% endblock %}

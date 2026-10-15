@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}{{ project }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ project.name }}</h1><p class="subtitle">{{ project.description|default:"Ansible project" }}</p></div>
+  {% if access.edit_playbooks %}
+  <div class="btn-row">
+    {% if project.is_git %}<form method="post" action="{% url 'project_check' project.pk %}">{% csrf_token %}<button class="btn" type="submit">{% translate "Check access" %}</button></form>{% endif %}
+    <a class="btn" href="{% url 'project_update' project.pk %}">{% translate "Edit" %}</a>
+    {% blocktranslate asvar confirm_text with name=project.name %}Delete {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'project_delete' project.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn danger" type="submit">{% translate "Delete" %}</button></form>
+  </div>
+  {% endif %}
+</div>
+<div class="split">
+  <div class="card">
+    {% if project.is_git %}
+      <div class="card-head"><h2>{% translate "Repository" %}</h2></div>
+      <table><tbody>
+        <tr><td class="faint">{% translate "URL" %}</td><td class="mono small">{{ project.git_url }}</td></tr>
+        <tr><td class="faint">{% translate "Branch or tag" %}</td><td class="mono">{{ project.git_ref|default:"HEAD" }}</td></tr>
+        <tr><td class="faint">{% translate "Folder" %}</td><td class="mono">{{ project.git_path|default:"/" }}</td></tr>
+        <tr><td class="faint">{% translate "Credential" %}</td><td>{% if project.git_credential %}{{ project.git_credential }}{% else %}{% translate "none" %}{% endif %}</td></tr>
+      </tbody></table>
+      <p class="help">{% translate "Checked out for every run. A preview records the commit, and applying it uses that commit even if the branch moved on." %}</p>
+    {% else %}
+      <div class="card-head"><h2>{% translate "Files" %}</h2>{% if access.edit_playbooks %}<a class="btn tiny" href="{% url 'project_file_create' project.pk %}">{% translate "Add file" %}</a>{% endif %}</div>
+      {% if files %}
+        <table><tbody>
+        {% for f in files %}
+          <tr>
+            <td class="mono">{% if access.edit_playbooks %}<a href="{% url 'project_file_edit' project.pk f.pk %}">{{ f.path }}</a>{% else %}{{ f.path }}{% endif %}</td>
+            <td class="faint small">{% blocktranslate with content=f.content|length updated_at=f.updated_at|ago %}{{ content }} chars · {{ updated_at }}{% endblocktranslate %}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<div class="empty">{% translate "No files yet." %}</div>{% endif %}
+      <p class="help">{% translate "Roles in roles/, templates in templates/, files in files/ - where Ansible looks for them. requirements.yml is installed before each run." %}</p>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Playbooks using it" %}</h3></div>
+    {% for pb in playbooks %}<div><a href="{{ pb.get_absolute_url }}">{{ pb.name }}</a>{% if pb.mode == "file" %} <span class="mono faint small">{{ pb.file_path }}</span>{% endif %}</div>
+    {% empty %}<p class="faint small" style="margin:0">{% translate "None yet. Pick this project in a playbook's settings." %}</p>{% endfor %}
+    <h3 style="margin-top:1rem">{% translate "Secrets" %}</h3>
+    {% for secret in project.secrets.all %}<span class="tag mono">{{ secret.name }}</span>{% empty %}<p class="faint small" style="margin:0">{% translate "None. Global and group secrets still apply." %}</p>{% endfor %}
+    {% if access.edit_playbooks %}<div style="margin-top:.5rem"><a class="btn tiny" href="{% url 'secret_create' %}?project={{ project.pk }}&next={{ request.path|urlencode }}">{% translate "Add secret" %}</a></div>{% endif %}
+    <h3 style="margin-top:1rem">{% translate "Vault passwords" %}</h3>
+    {% for cred in project.vault_credentials.all %}<span class="tag">{{ cred.name }}{% if cred.vault_id %} <span class="mono faint">{{ cred.vault_id }}</span>{% endif %}</span>{% empty %}<p class="faint small" style="margin:0">{% translate "None. Add one in the project's settings to open ansible-vault files." %}</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

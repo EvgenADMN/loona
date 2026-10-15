@@ -1,0 +1,81 @@
+{% load i18n static loona_tags %}<!doctype html>
+{% comment %}No data-theme means "no saved choice" - the page then follows the
+machine's own light/dark setting, which is what a signed-out visitor gets.{% endcomment %}
+<html lang="{{ LANGUAGE_CODE|default:'en' }}"{% if LOONA_THEME %} data-theme="{{ LOONA_THEME }}"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% translate "Loona" %}{% endblock %}</title>
+  <meta name="color-scheme" content="dark light">
+  <link rel="stylesheet" href="{% asset 'css/loona.css' %}">
+  <link rel="icon" href="{% asset 'img/loona.svg' %}">
+  <script src="{% asset 'vendor/htmx.min.js' %}" defer></script>
+  <script src="{% asset 'vendor/alpine.min.js' %}" defer></script>
+  <script src="{% asset 'js/loona.js' %}" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+{% if user.is_authenticated %}
+<header class="topbar">
+  <a class="brand" href="{% url 'dashboard' %}">
+    <img class="mark" src="{% asset 'img/loona.svg' %}" alt="" width="24" height="24"> {% translate "Loona" %}{% if LOONA_INSTANCE %} <span class="instance">{{ LOONA_INSTANCE }}</span>{% endif %}
+  </a>
+  <nav class="nav">
+    <a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">{% translate "Overview" %}</a>
+    <a href="{% url 'playbook_list' %}" class="{% if 'playbook' in request.resolver_match.url_name or 'task' in request.resolver_match.url_name or request.resolver_match.url_name|slice:':8' == 'project_' or request.resolver_match.url_name|slice:':9' == 'template_' %}active{% endif %}">{% translate "Playbooks" %}</a>
+    <a href="{% url 'host_list' %}" class="{% if request.resolver_match.url_name|slice:':5' == 'host_' or request.resolver_match.url_name|slice:':6' == 'group_' %}active{% endif %}">{% translate "Inventory" %}</a>
+    {% if access.manage_credentials and not user.is_superuser %}<a href="{% url 'credential_list' %}" class="{% if 'credential' in request.resolver_match.url_name %}active{% endif %}">{% translate "Credentials" %}</a>{% endif %}
+    <a href="{% url 'secret_list' %}" class="{% if 'secret' in request.resolver_match.url_name %}active{% endif %}">{% translate "Secrets" %}</a>
+    <a href="{% url 'catalog_home' %}" class="{% if 'catalog' in request.resolver_match.url_name %}active{% endif %}">{% translate "Catalog" %}</a>
+    <a href="{% url 'tofu_project_list' %}" class="{% if 'tofu' in request.resolver_match.url_name %}active{% endif %}">{% translate "Infrastructure" %}</a>
+    <a href="{% url 'drift_list' %}" class="{% if 'drift' in request.resolver_match.url_name %}active{% endif %}">{% translate "Drift" %}</a>
+    <a href="{% url 'job_list' %}" class="{% if 'job' in request.resolver_match.url_name %}active{% endif %}">{% translate "Jobs" %}</a>
+    <a href="{% url 'workflow_list' %}" class="{% if 'workflow' in request.resolver_match.url_name %}active{% endif %}">{% translate "Workflows" %}</a>
+    <a href="{% url 'schedule_list' %}" class="{% if 'schedule' in request.resolver_match.url_name %}active{% endif %}">{% translate "Schedules" %}</a>
+    {% if access.manage_teams and not user.is_superuser %}<a href="{% url 'team_list' %}" class="{% if 'team' in request.resolver_match.url_name %}active{% endif %}">{% translate "Teams" %}</a>{% endif %}
+  </nav>
+  <div class="topbar-right">
+    {% comment %}The page repaints the moment this is clicked; the POST only makes it stick.{% endcomment %}
+    <button class="theme-toggle" type="button" x-data
+            hx-post="{% url 'theme_toggle' %}" hx-swap="none"
+            title="{% translate "Switch between the dark and light palettes" %}"
+            aria-label="{% translate "Switch theme" %}"
+            @click="document.documentElement.dataset.theme =
+                    document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'">
+      <svg class="icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/>
+      </svg>
+      <svg class="icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20.5 14.6A8.6 8.6 0 1 1 9.4 3.5a6.8 6.8 0 0 0 11.1 11.1z"/>
+      </svg>
+    </button>
+    <form method="post" action="{% url 'language_set' %}" class="language-pick">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <select name="language" data-autosubmit aria-label="{% translate "Interface language" %}" title="{% translate "Interface language" %}">
+        <option value=""{% if not LOONA_LANGUAGE %} selected{% endif %}>{% translate "Auto" context "language" %}</option>
+        {% for code, name in LOONA_LANGUAGES %}<option value="{{ code }}"{% if LOONA_LANGUAGE == code %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+    </form>
+    <a href="{% url 'api_tokens' %}" class="faint" title="{% translate "API tokens and triggers" %}">{{ user.get_username }}</a>
+    {% if user.is_superuser %}<a href="{% url 'admin_overview' %}" class="faint{% if request.resolver_match.url_name|slice:':6' == 'admin_' or 'team' in request.resolver_match.url_name or 'credential' in request.resolver_match.url_name %} active{% endif %}">{% translate "Administration" %}</a>{% endif %}
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+      <button class="btn tiny ghost" type="submit">{% translate "Sign out" %}</button>
+    </form>
+  </div>
+</header>
+{% endif %}
+
+<main class="wrap">
+  {% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+      <div class="message {{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

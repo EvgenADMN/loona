@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if project %}{% blocktranslate %}Edit {{ project }}{% endblocktranslate %}{% else %}{% translate "New project" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if project %}{% blocktranslate %}Edit {{ project }}{% endblocktranslate %}{% else %}{% translate "New OpenTofu project" %}{% endif %}</h1></div>
+<div class="card" style="max-width:760px" x-data="{ source: '{{ form.source.value|default:'files'|escapejs }}' }">
+  <form method="post">{% csrf_token %}
+    {% include "core/_field.html" with field=form.name %}
+    {% include "core/_field.html" with field=form.description %}
+    {% include "core/_field.html" with field=form.host_group %}
+    <div class="field" @change="source = $event.target.value">
+      <label>{% translate "Configuration" %}</label>
+      {{ form.source }}
+      {% for error in form.source.errors %}<div class="errors">{{ error }}</div>{% endfor %}
+    </div>
+    <div x-show="source === 'git'">
+      {% include "core/_field.html" with field=form.git_url %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.git_ref %}
+        {% include "core/_field.html" with field=form.git_path %}
+      </div>
+      {% include "core/_field.html" with field=form.git_credential %}
+    </div>
+    <p class="help" x-show="source === 'files'">{% translate "You will edit the .tf files on the project page." %}</p>
+    <h3 style="margin-top:1.2rem">{% translate "New machines" %}</h3>
+    <p class="help" style="margin-top:0">{% blocktranslate %}Machines the project declares in its <span class="mono">loona_hosts</span> output get their own SSH key, then this playbook.{% endblocktranslate %}</p>
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.bootstrap_user %}
+      {% include "core/_field.html" with field=form.baseline_playbook %}
+    </div>
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% if project %}{{ project.get_absolute_url }}{% else %}{% url 'tofu_project_list' %}{% endif %}">{% translate "Cancel" %}</a>
+      {% if project %}<a class="btn danger" style="margin-left:auto" href="{% url 'tofu_project_delete' project.pk %}">{% translate "Delete" %}</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

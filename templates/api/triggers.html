@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Triggers - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Automation" %}</h1><p class="subtitle">{% translate "Secret URLs that start an OpenTofu plan or a playbook preview - from CI, or when a branch is pushed." %}</p></div></div>
+{% include "api/_tabs.html" with tab="triggers" %}
+{% if fresh %}
+  <div class="message success">
+    {% blocktranslate with name=fresh.trigger.name %}<b>Trigger {{ name }} is ready. Copy the secret now - Loona will not show it again.</b>{% endblocktranslate %}
+    <table style="margin:.5rem 0"><tbody>
+      <tr><td class="faint small">{% translate "URL" %}</td><td class="mono small" style="word-break:break-all">{{ fresh.url }}</td></tr>
+      <tr><td class="faint small">{% translate "Secret" %}</td><td class="mono small" style="word-break:break-all">{{ fresh.secret }}</td></tr>
+    </tbody></table>
+    <div class="small">{% translate "From CI:" %}</div>
+    <pre class="yaml small" style="white-space:pre-wrap">curl -X POST -H "X-Loona-Trigger-Token: $LOONA_TRIGGER_SECRET" {{ fresh.url }}</pre>
+    <div class="small">{% blocktranslate %}GitHub: add a webhook with this URL, content type <span class="mono">application/json</span> and the secret. GitLab: a push webhook with the secret as its token.{% endblocktranslate %}</div>
+  </div>
+{% endif %}
+<div class="split">
+  <div class="card">
+  {% if triggers %}
+    <table><tbody>
+    {% for row in triggers %}{% with t=row.t %}
+      <tr>
+        <td>{{ t.name }}{% if not t.enabled %} <span class="badge">{% translate "off" %}</span>{% endif %}
+          <div class="faint small">{{ t.get_action_display }}:
+            {% if t.workflow %}{{ t.workflow.name }}{% elif t.tofu_project %}{{ t.tofu_project.name }}{% else %}{% blocktranslate with name=t.playbook.name name2=t.host_group.name %}{{ name }} on {{ name2 }}{% endblocktranslate %}{% endif %}
+            {% if t.branch %} {% blocktranslate with branch=t.branch %}· pushes to <span class="mono">{{ branch }}</span>{% endblocktranslate %}{% endif %} {% blocktranslate with run_as=t.run_as %}· runs as {{ run_as }}{% endblocktranslate %}</div>
+          <div class="mono faint small" style="word-break:break-all">{{ row.url }}</div>
+        </td>
+        <td class="small">{% if t.last_run %}<a href="{{ t.last_run.get_absolute_url }}">{% blocktranslate with pk=t.last_run.pk %}run #{{ pk }}{% endblocktranslate %}</a> {{ t.last_fired_at|ago }}{% elif t.last_job %}<a href="{{ t.last_job.get_absolute_url }}">#{{ t.last_job.pk }}</a> {{ t.last_fired_at|ago }}{% else %}<span class="faint">{% translate "never fired" %}</span>{% endif %}</td>
+        <td style="text-align:right">
+          <div class="btn-row" style="justify-content:flex-end">
+            <form method="post" action="{% url 'api_trigger_toggle' t.pk %}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% if t.enabled %}{% translate "Disable" %}{% else %}{% translate "Enable" %}{% endif %}</button></form>
+            {% blocktranslate asvar confirm_text with name=t.name %}Remove {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'api_trigger_delete' t.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% translate "Remove" %}</button></form>
+          </div>
+        </td>
+      </tr>
+    {% endwith %}{% endfor %}
+    </tbody></table>
+  {% else %}<div class="empty">{% translate "No triggers yet." %}</div>{% endif %}
+  </div>
+  {% if can_create %}
+  <div class="card">
+    <div class="card-head"><h3>{% translate "New trigger" %}</h3></div>
+    <form method="post" x-data="{ action: '{{ form.action.value|default:'plan'|escapejs }}' }">{% csrf_token %}
+      {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+      {% include "core/_field.html" with field=form.name %}
+      <div @change="action = $event.target.value">{% include "core/_field.html" with field=form.action %}</div>
+      <div x-show="action === 'plan'">{% include "core/_field.html" with field=form.tofu_project %}</div>
+      <div x-show="action === 'workflow'">{% include "core/_field.html" with field=form.workflow %}</div>
+      <div x-show="action === 'preview' || action === 'run'">
+        {% include "core/_field.html" with field=form.playbook %}
+        {% include "core/_field.html" with field=form.host_group %}
+      </div>
+      {% include "core/_field.html" with field=form.branch %}
+      <p class="help">{% translate "It runs as you. If you lose the rights it needs, it stops working." %}</p>
+      <button class="btn primary" type="submit">{% translate "Create trigger" %}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

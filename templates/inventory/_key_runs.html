@@ -1,0 +1,17 @@
+{% load i18n loona_tags %}
+<div class="card" id="key-runs"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <div class="card-head"><h3>{% translate "Key management runs" %}</h3></div>
+  {% if key_jobs %}
+    <table>
+      <tbody>
+      {% for job in key_jobs %}
+        <tr>
+          <td><a href="{{ job.get_absolute_url }}">#{{ job.pk }} {{ job.get_kind_display }}</a></td>
+          <td>{% include "core/_status.html" with status=job.status label=job.get_status_display %}</td>
+          <td class="faint small" style="text-align:right">{{ job.created_at|ago }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}<div class="empty">{% translate "Nothing yet." %}</div>{% endif %}
+</div>

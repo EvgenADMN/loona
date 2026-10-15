@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "API tokens - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Automation" %}</h1><p class="subtitle">{% translate "Tokens act as you, with your rights - keep them like passwords." %}</p></div></div>
+{% include "api/_tabs.html" with tab="tokens" %}
+{% if fresh %}
+  <div class="message success">
+    {% blocktranslate %}<b>Copy this token now - Loona will not show it again.</b>{% endblocktranslate %}
+    <pre class="yaml" style="margin:.5rem 0;white-space:pre-wrap;word-break:break-all">{{ fresh }}</pre>
+    <span class="small">{% blocktranslate with fresh=fresh|truncatechars:16 %}Try it: <span class="mono">curl -H "Authorization: Bearer {{ fresh }}" {{ base }}me/</span>{% endblocktranslate %}</span>
+  </div>
+{% endif %}
+<div class="split">
+  <div class="card">
+  {% if tokens %}
+    <table><tbody>
+    {% for t in tokens %}
+      <tr>
+        <td>{{ t.name }}<div class="mono faint small">{{ t.prefix }}…</div></td>
+        <td class="faint small">{% blocktranslate with created_at=t.created_at|ago %}made {{ created_at }}<br>{% endblocktranslate %}{% if t.last_used_at %}{% blocktranslate with last_used_at=t.last_used_at|ago %}used {{ last_used_at }}{% endblocktranslate %}{% else %}{% translate "never used" %}{% endif %}</td>
+        <td class="small">{% if not t.is_live %}<span class="status fail"><span class="dot"></span>{% translate "expired" %}</span>{% elif t.expires_at %}{% blocktranslate with expires_at=t.expires_at|date:"Y-m-d" %}until {{ expires_at }}{% endblocktranslate %}{% else %}<span class="faint">{% translate "no expiry" %}</span>{% endif %}</td>
+        <td style="text-align:right">{% blocktranslate asvar confirm_text with name=t.name %}Revoke {{ name }}? Anything using it stops working.{% endblocktranslate %}<form method="post" action="{% url 'api_token_revoke' t.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% translate "Revoke" %}</button></form></td>
+      </tr>
+    {% endfor %}
+    </tbody></table>
+  {% else %}<div class="empty">{% translate "No tokens. Make one for a script, a CI pipeline or another system." %}</div>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "New token" %}</h3></div>
+    <form method="post">{% csrf_token %}
+      {% include "core/_form.html" %}
+      <button class="btn primary" type="submit">{% translate "Create token" %}</button>
+    </form>
+    <p class="help">{% blocktranslate %}Everything the UI does is in the API at <span class="mono">{{ base }}</span> - see{% endblocktranslate %} <a href="{{ docs }}">{% translate "the documentation" %}</a>.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% load i18n loona_tags %}{% if requests %}
+<div class="table-wrap"><table>
+  <thead><tr><th>{% translate "Machine" %}</th><th>{% translate "Item" %}</th>{% if show_owner %}<th>{% translate "Requested by" %}</th>{% endif %}<th>{% translate "Status" %}</th><th>{% translate "Address" %}</th><th>{% translate "When" %}</th></tr></thead>
+  <tbody>
+  {% for r in requests %}
+    <tr><td><a class="mono" href="{{ r.get_absolute_url }}">{{ r.name }}</a></td>
+      <td>{{ r.item.name }}</td>
+      {% if show_owner %}<td class="small">{{ r.requested_by|default:"-" }}</td>{% endif %}
+      <td><span class="status {{ r.badge }}"><span class="dot"></span>{{ r.stage }}</span></td>
+      <td class="mono small">{{ r.address|default:"-" }}</td>
+      <td class="faint small">{{ r.created_at|ago }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<div class="empty">{% translate "None." %}</div>{% endif %}

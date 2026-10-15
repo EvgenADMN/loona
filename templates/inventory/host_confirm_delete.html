@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}Delete {{ object }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="card" style="max-width:620px">
+  <h1>{% blocktranslate %}Delete {{ object }}?{% endblocktranslate %}</h1>
+  <p class="muted">{% translate "This cannot be undone." %}</p>
+
+  <form method="post">{% csrf_token %}
+    {% if key and key.is_installed %}
+      <div class="card tight" style="margin:1rem 0">
+        <label>
+          <input type="checkbox" name="revoke_key" value="1" checked>
+          {% translate "Remove Loona's key from the server first" %}
+        </label>
+        <p class="faint small" style="margin-top:.5rem">
+          {% blocktranslate trimmed with name=object.name username=key.username %}Loona connects to {{ name }} with its own key, deletes that key from
+          <span class="mono">~{{ username }}/.ssh/authorized_keys</span>, then deletes
+          its local copy and the host record. You will be taken to the run's log.{% endblocktranslate %}
+        </p>
+        <p class="faint small">
+          {% blocktranslate trimmed with fingerprint=key.fingerprint %}Unchecked, the host disappears from Loona but the key
+          (<span class="mono">{{ fingerprint }}</span>) stays behind on that machine
+          and has to be pulled by hand.{% endblocktranslate %}
+        </p>
+      </div>
+    {% elif key %}
+      <p class="faint small">{% translate "Loona's unused keypair for this host is discarded along with it." %}</p>
+    {% endif %}
+
+    <div class="btn-row">
+      <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+      <a class="btn ghost" href="{% url 'host_detail' object.pk %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

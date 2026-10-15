@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if step %}{% blocktranslate %}Edit {{ step }}{% endblocktranslate %}{% else %}{% translate "New step" %}{% endif %} {% blocktranslate %}- {{ workflow }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if step %}{% blocktranslate %}Edit {{ step }}{% endblocktranslate %}{% else %}{% translate "New step" %}{% endif %}</h1><p class="subtitle">{{ workflow.name }}</p></div></div>
+<form method="post">{% csrf_token %}
+{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}
+<div class="split" x-data="{ kind: '{{ form.kind.value|default:'playbook'|escapejs }}' }">
+  <div class="card">
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.name %}
+      <div @change="kind = $event.target.value">{% include "core/_field.html" with field=form.kind %}</div>
+    </div>
+    <div x-show="kind === 'playbook'">
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.playbook %}
+        {% include "core/_field.html" with field=form.host_group %}
+      </div>
+      {% include "core/_field.html" with field=form.limit %}
+      {% include "core/_field.html" with field=form.extra_vars %}
+    </div>
+    <div x-show="kind === 'tofu'">
+      {% include "core/_field.html" with field=form.tofu_project %}
+      <p class="help">{% translate "Plans, waits for approval where the project's group wants one, applies. New machines are set up before the next step starts." %}</p>
+    </div>
+    <div x-show="kind === 'message' || kind === 'approval'">{% include "core/_field.html" with field=form.message %}</div>
+    <div x-show="kind === 'message'">{% include "core/_field.html" with field=form.channels %}</div>
+    <p class="help" x-show="kind === 'approval'">{% blocktranslate with name=workflow.host_group.name %}An Admin of {{ name }}, other than whoever started the run, says go on or stop.{% endblocktranslate %}</p>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Runs after" %}</h3></div>
+    {% if form.parents %}
+      <p class="small" style="margin-top:0">{% translate "This step starts once the steps chosen here are done and at least one of them ended the way its arrow says. None chosen: it starts with the run." %}</p>
+      <div class="form-grid">{% for field in form.parent_fields %}{% include "core/_field.html" with field=field %}{% endfor %}</div>
+    {% else %}<p class="faint small" style="margin:0">{% translate "The first step starts with the run." %}</p>{% endif %}
+  </div>
+</div>
+<div class="btn-row" style="margin-top:1rem">
+  <button class="btn primary" type="submit">{% translate "Save" %}</button>
+  <a class="btn ghost" href="{{ workflow.get_absolute_url }}">{% translate "Cancel" %}</a>
+</div>
+</form>
+{% if step %}
+{% blocktranslate asvar confirm_text with name=step.name %}Remove the step {{ name }} and its arrows?{% endblocktranslate %}<form method="post" action="{% url 'workflow_step_delete' workflow.pk step.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:1rem">{% csrf_token %}
+  <button class="btn danger" type="submit">{% translate "Remove step" %}</button>
+</form>
+{% endif %}
+{% endblock %}

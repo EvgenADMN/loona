@@ -1,0 +1,4 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ playbook }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}{% include "playbooks/_editor.html" %}{% endblock %}

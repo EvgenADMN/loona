@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if schedule.pk %}{{ schedule.name }}{% else %}{% translate "New schedule" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if schedule.pk %}{% blocktranslate with name=schedule.name %}Schedule {{ name }}{% endblocktranslate %}{% else %}{% translate "New schedule" %}{% endif %}</h1></div>
+<div class="card" style="max-width:760px">
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+    {% include "core/_field.html" with field=form.name %}
+    <div x-data="{ what: '{{ form.what.value|default:'playbook'|escapejs }}' }">
+    <div @change="if ($event.target.name === 'what') what = $event.target.value">{% include "core/_field.html" with field=form.what %}</div>
+    <div x-show="what === 'playbook'">
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.playbook %}
+        {% include "core/_field.html" with field=form.host_group %}
+      </div>
+      {% include "core/_field.html" with field=form.action %}
+    </div>
+    <div x-show="what === 'workflow'">
+      {% include "core/_field.html" with field=form.workflow %}
+      <p class="help" style="margin-top:-.4rem">{% translate "Where a group's rules or maintenance windows stop a step, it becomes a preview and the workflow waits for approval." %}</p>
+    </div>
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.cron %}
+      {% include "core/_field.html" with field=form.timezone %}
+    </div>
+    <datalist id="timezones">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist>
+    <p class="help" style="margin-top:-.4rem"><span class="mono">0 3 * * mon-fri</span> {% blocktranslate %}weekdays at 03:00 · <span class="mono">*/30 * * * *</span> every half hour · <span class="mono">0 2 1 * *</span> the 1st of each month at 02:00 · <span class="mono">@daily</span> midnight{% endblocktranslate %}</p>
+    <div x-show="what === 'playbook'">
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.limit %}
+      {% include "core/_field.html" with field=form.tags %}
+    </div>
+    {% include "core/_field.html" with field=form.skip_tags %}
+    </div>
+    {% include "core/_field.html" with field=form.extra_vars %}
+    </div>
+    {% include "core/_field.html" with field=form.enabled %}
+    {% if schedule.pk and schedule.run_as_id != user.pk %}<div class="message info">{% blocktranslate with run_as=schedule.run_as %}It runs as {{ run_as }} now. Saving makes it run as you, with your rights.{% endblocktranslate %}</div>{% endif %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% url 'schedule_list' %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

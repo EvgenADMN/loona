@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if channel.pk %}{{ channel.name }}{% else %}{% translate "New channel" %}{% endif %} {% translate "- Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if channel.pk %}{{ channel.name }}{% else %}{% translate "New channel" %}{% endif %}</h1><p class="subtitle">{% translate "Notifications" %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="card" style="max-width:780px" x-data="{ kind: '{{ form.kind.value|default:'email'|escapejs }}' }">
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.name %}
+      <div @change="kind = $event.target.value">{% include "core/_field.html" with field=form.kind %}</div>
+    </div>
+    {% include "core/_field.html" with field=form.enabled %}
+    <div x-show="kind === 'email'">{% include "core/_field.html" with field=form.recipients %}</div>
+    <div x-show="kind === 'telegram'" class="form-grid">
+      {% include "core/_field.html" with field=form.bot_token %}
+      {% include "core/_field.html" with field=form.chat_id %}
+    </div>
+    <div x-show="kind === 'webhook'">
+      {% include "core/_field.html" with field=form.url %}
+      {% include "core/_field.html" with field=form.secret %}
+    </div>
+    <div class="form-section">
+      {% include "core/_field.html" with field=form.events %}
+      {% include "core/_field.html" with field=form.host_groups %}
+    </div>
+    <div class="btn-row" style="margin-top:.8rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% url 'admin_notifications' %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

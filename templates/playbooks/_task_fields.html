@@ -1,0 +1,29 @@
+{% load i18n %}{% with spec=form.spec %}
+<input type="hidden" name="module" value="{{ form.module_name }}">
+<div class="module-current">
+  <strong>{{ spec.label }}</strong>
+  {% if spec.label != spec.name %}<span class="tag mono">{{ spec.name }}</span>{% endif %}
+  {% if spec.source == "unknown" %}<span class="badge">{% translate "no documentation" %}</span>{% endif %}
+</div>
+{% if spec.description %}<p class="help" style="margin:.2rem 0 .8rem">{{ spec.description }}</p>{% endif %}
+{% for error in form.module.errors %}<div class="errors">{{ error }}</div>{% endfor %}
+
+{% if form.arg_fields %}
+  <div class="form-grid">
+    {% for field in form.arg_fields %}{% include "core/_field.html" with field=field %}{% endfor %}
+  </div>
+{% elif not form.more_fields and spec.source != "unknown" %}
+  <p class="faint small">{% translate "This module takes no arguments." %}</p>
+{% endif %}
+
+{% if form.more_fields %}
+  <details class="more-options" {% if form.more_open %}open{% endif %}>
+    <summary>{% translate "All options" %} <span class="faint">({{ form.more_fields|length }})</span></summary>
+    <div class="form-grid">
+      {% for field in form.more_fields %}{% include "core/_field.html" with field=field %}{% endfor %}
+    </div>
+  </details>
+{% endif %}
+
+{% include "core/_field.html" with field=form.extra_args %}
+{% endwith %}

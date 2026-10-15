@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if form.instance.pk %}{{ form.instance }}{% else %}{% translate "New group" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if form.instance.pk %}{% blocktranslate with instance=form.instance %}Edit {{ instance }}{% endblocktranslate %}{% else %}{% translate "New group" %}{% endif %}</h1></div>
+<div class="card" style="max-width:720px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% url 'group_list' %}">{% translate "Cancel" %}</a>
+      {% if form.instance.pk %}<a class="btn danger" style="margin-left:auto" href="{% url 'group_delete' form.instance.pk %}">{% translate "Delete" %}</a>{% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

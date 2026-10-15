@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if variable.pk %}{{ variable.name }}{% else %}{% translate "New variable" %}{% endif %} {% blocktranslate %}- {{ project }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% if variable.pk %}{{ variable.name }}{% else %}{% translate "New variable" %}{% endif %}</h1><p class="subtitle">{% translate "in" %} <a href="{{ project.get_absolute_url }}">{{ project.name }}</a> {% translate "· encrypted at rest" %}</p></div>
+</div>
+<div class="card" style="max-width:640px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:.6rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{{ project.get_absolute_url }}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+  {% if variable.pk %}
+  <form method="post" action="{% url 'tofu_variable_delete' project.pk variable.pk %}" style="margin-top:.6rem">{% csrf_token %}
+    <button class="btn danger" type="submit">{% translate "Delete variable" %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static loona_tags %}
+{% block title %}{% translate "Sign in - Loona" %}{% endblock %}
+{% block content %}
+<div style="max-width:360px;margin:8vh auto">
+  <div style="text-align:center;margin-bottom:1.4rem">
+    <img class="login-mark" src="{% asset 'img/loona.svg' %}" alt="" width="72" height="72">
+    <h1 style="margin:.3rem 0 0">{% translate "Loona" %}</h1>
+    <p class="muted small">{% translate "Ansible, with a web interface." %}</p>
+  </div>
+  <div class="card">
+    {% if sso %}
+      <a class="btn primary" style="width:100%;justify-content:center" href="{% url 'sso_start' %}{% if next %}?next={{ next|urlencode }}{% endif %}">{{ sso_label }}</a>
+      <div class="login-or"><span>{% translate "or with a password" %}</span></div>
+    {% endif %}
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      {% include "core/_form.html" %}
+      <button class="btn {% if sso %}{% else %}primary{% endif %}" style="width:100%;justify-content:center" type="submit">{% translate "Sign in" %}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

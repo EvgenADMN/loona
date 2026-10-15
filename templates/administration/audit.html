@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Audit log - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Who changed what in Administration. Secrets are never recorded." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="card">
+{% if entries %}
+  <table><tbody>
+  {% for e in entries %}
+    <tr>
+      <td class="faint small" style="white-space:nowrap">{{ e.at }}</td>
+      <td class="small">{{ e.user|default:"?" }}</td>
+      <td class="small">{{ e.summary }}
+        {% if e.changes %}<div class="mono faint small">{% for name, pair in e.changes.items %}{{ name }}: {{ pair.0|default_if_none:"-" }} → {{ pair.1|default_if_none:"-" }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</div>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody></table>
+{% else %}<div class="empty">{% translate "Nothing changed yet." %}</div>{% endif %}
+</div>
+{% endblock %}

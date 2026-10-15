@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "HashiCorp Vault - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Settings take effect without a restart." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<form method="post">{% csrf_token %}
+<div class="split" x-data="{ auth: '{{ form.hcv_auth.value|default:'token'|escapejs }}' }">
+  <div class="card">
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+    <p class="small" style="margin-top:0">{% translate "Secrets can refer to a value in Vault instead of holding it; Loona reads it at every run. Give Loona a token or AppRole with a read-only policy on the paths it needs, and nothing more." %}</p>
+    <div class="form-section">
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.hcv_address %}
+        {% include "core/_field.html" with field=form.hcv_timeout %}
+      </div>
+      {% include "core/_field.html" with field=form.hcv_namespace %}
+      {% include "core/_field.html" with field=form.hcv_verify_tls %}
+      {% include "core/_field.html" with field=form.hcv_ca_certificate %}
+    </div>
+    <div class="form-section">
+      <h3>{% translate "Signing in" %}</h3>
+      <div @change="auth = $event.target.value">{% include "core/_field.html" with field=form.hcv_auth %}</div>
+      <div x-show="auth === 'token'">
+        {% include "core/_field.html" with field=form.token %}
+        {% if has_token %}<p class="faint small" style="margin-top:-.5rem">{% translate "A token is stored." %}</p>{% endif %}
+      </div>
+      <div x-show="auth === 'approle'">
+        <div class="form-grid">
+          {% include "core/_field.html" with field=form.hcv_approle_mount %}
+          {% include "core/_field.html" with field=form.hcv_role_id %}
+        </div>
+        {% include "core/_field.html" with field=form.secret_id %}
+        {% if has_secret_id %}<p class="faint small" style="margin-top:-.5rem">{% translate "A Secret ID is stored." %}</p>{% endif %}
+      </div>
+    </div>
+    <div class="form-section">
+      <h3>{% translate "Who may refer to what" %}</h3>
+      {% include "core/_field.html" with field=form.hcv_allowed_paths %}
+    </div>
+    <div class="btn-row" style="margin-top:.8rem">
+      <button class="btn primary" type="submit" name="save" value="1">{% translate "Save" %}</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Test connection" %}</h3></div>
+    <p class="small" style="margin-top:0">{% translate "Tries the settings on the left as they are, before saving." %}</p>
+    {% include "core/_field.html" with field=form.test_ref %}
+    <button class="btn" type="submit" name="test" value="1">{% translate "Test connection" %}</button>
+    {% if result %}
+      <div class="approval" style="margin-top:.9rem">
+        <span class="status {% if result.ok %}ok{% else %}fail{% endif %}"><span class="dot"></span>{% if result.ok %}{% translate "Works" %}{% else %}{% translate "Failed" %}{% endif %}</span>
+        <p class="small mono" style="margin:.4rem 0 0;word-break:break-all">{{ result.message }}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+</form>
+{% endblock %}

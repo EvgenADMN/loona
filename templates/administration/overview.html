@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Settings take effect without a restart." %}</p></div></div>
+{% include "administration/_nav.html" %}
+<div class="split">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>{% translate "System" %}</h2></div>
+      <table><tbody>
+        {% for label, value in versions %}<tr><td class="faint">{{ label }}</td><td class="mono small">{{ value }}</td></tr>{% endfor %}
+        <tr><td class="faint">{% translate "Runs" %}</td><td class="small">{{ worker }}</td></tr>
+        <tr><td class="faint">{% translate "Scheduler" %}</td><td class="small">{% if row.last_tick_at %}{% blocktranslate with last_tick_at=row.last_tick_at|ago %}last tick {{ last_tick_at }}{% endblocktranslate %}{% else %}{% translate "has not ticked yet - drift checks and cleanup are not running" %}{% endif %}</td></tr>
+        <tr><td class="faint">{% translate "Sign-in" %}</td><td class="small">
+          {% if ldap.SERVER_URI %}{% blocktranslate with SERVER_URI=ldap.SERVER_URI %}LDAP <span class="mono">{{ SERVER_URI }}</span>{% endblocktranslate %} <span class="faint">{% blocktranslate with SOURCE=ldap.SOURCE %}(from {{ SOURCE }}){% endblocktranslate %}</span>{% else %}{% translate "local accounts only" %}{% endif %}
+          {% if row.local_login == "superusers" %} {% translate "· local sign-in for superusers only" %}{% endif %}
+        </td></tr>
+        <tr><td class="faint">{% translate "Users" %}</td><td class="small">{{ users }}</td></tr>
+      </tbody></table>
+      <p class="faint small" style="margin-bottom:0">{% translate "Raw records are still in the" %} <a href="{% url 'admin:index' %}">{% translate "Django admin" %}</a>.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Recent changes" %}</h3><a class="small" href="{% url 'admin_audit' %}">{% translate "Audit log" %}</a></div>
+    {% if recent %}
+      <table><tbody>{% for e in recent %}<tr><td class="faint small">{{ e.at|ago }}</td><td class="small">{{ e.user|default:"?" }}: {{ e.summary }}</td></tr>{% endfor %}</tbody></table>
+    {% else %}<p class="faint small" style="margin:0">{% translate "Nothing changed here yet." %}</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

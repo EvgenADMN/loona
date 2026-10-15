@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Authentication - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Settings take effect without a restart." %}</p></div></div>
+{% include "administration/_nav.html" %}
+{% if env_configured %}
+  <div class="message info">{% translate "LDAP is currently configured through environment variables and working from those. Switching it on here takes over from them." %}</div>
+{% endif %}
+<form method="post">{% csrf_token %}
+<div class="split">
+  <div class="card">
+    {% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+    <div class="form-section">
+      {% include "core/_field.html" with field=form.ldap_enabled %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.ldap_server_uri %}
+        {% include "core/_field.html" with field=form.ldap_timeout %}
+      </div>
+      {% include "core/_field.html" with field=form.ldap_start_tls %}
+      {% include "core/_field.html" with field=form.ldap_verify_tls %}
+      {% include "core/_field.html" with field=form.ldap_ca_certificate %}
+    </div>
+    <div class="form-section">
+      <h3>{% translate "Service account" %}</h3>
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.ldap_bind_dn %}
+        {% include "core/_field.html" with field=form.bind_password %}
+      </div>
+      {% if has_password %}<p class="faint small" style="margin-top:-.5rem">{% translate "A password is stored." %}</p>{% endif %}
+    </div>
+    <div class="form-section">
+      <h3>{% translate "Users" %}</h3>
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.ldap_user_base %}
+        {% include "core/_field.html" with field=form.ldap_user_filter %}
+        {% include "core/_field.html" with field=form.ldap_username_attr %}
+        {% include "core/_field.html" with field=form.ldap_email_attr %}
+        {% include "core/_field.html" with field=form.ldap_first_name_attr %}
+        {% include "core/_field.html" with field=form.ldap_last_name_attr %}
+      </div>
+    </div>
+    <div class="form-section">
+      <h3>{% translate "Groups and access" %}</h3>
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.ldap_group_base %}
+        {% include "core/_field.html" with field=form.ldap_group_name_attr %}
+      </div>
+      {% include "core/_field.html" with field=form.ldap_group_filter %}
+      {% include "core/_field.html" with field=form.ldap_mirror_groups %}
+      {% include "core/_field.html" with field=form.ldap_require_group %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.ldap_superuser_group %}
+        {% include "core/_field.html" with field=form.ldap_staff_group %}
+      </div>
+      {% include "core/_field.html" with field=form.ldap_recheck_minutes %}
+    </div>
+    <div class="btn-row" style="margin-top:.8rem">
+      <button class="btn primary" type="submit" name="save" value="1">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% url 'admin_directory' %}">{% translate "Directory group mapping" %}</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Test connection" %}</h3></div>
+    <p class="small" style="margin-top:0">{% translate "Tries the settings on the left as they are, before saving." %}</p>
+    {% include "core/_field.html" with field=form.test_username %}
+    <button class="btn" type="submit" name="test" value="1">{% translate "Test connection" %}</button>
+    {% if result %}
+      <div class="approval" style="margin-top:.9rem">
+        <span class="status {% if result.ok %}ok{% else %}fail{% endif %}"><span class="dot"></span>{% if result.ok %}{% translate "Works" %}{% else %}{% translate "Failed" %}{% endif %}</span>
+        <p class="small mono" style="margin:.4rem 0 0;word-break:break-all">{{ result.message }}</p>
+        {% if result.user %}
+          <p class="small" style="margin:.5rem 0 .2rem">{{ result.user.username }}{% if result.user.email %} · {{ result.user.email }}{% endif %}{% for f in result.flags %} · <b>{{ f }}</b>{% endfor %}</p>
+          <table><tbody>
+          {% for g in result.groups %}<tr><td class="small">{{ g.name }}</td><td class="small">{% if g.team %}→ {{ g.team }}{% else %}<span class="faint">{% translate "not mapped - no team" %}</span>{% endif %}</td></tr>
+          {% empty %}<tr><td class="faint small">{% translate "No groups." %}</td></tr>{% endfor %}
+          </tbody></table>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+</form>
+{% endblock %}

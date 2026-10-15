@@ -1,0 +1,23 @@
+{% load i18n loona_tags %}
+{% if history %}
+<table>
+  <tbody>
+  {% for e in history %}
+    <tr>
+      <td class="faint small" style="white-space:nowrap">{{ e.job.created_at|ago }}</td>
+      <td>
+        <a href="{{ e.job.get_absolute_url }}">#{{ e.job.pk }} {{ e.job.playbook_name }}</a>
+        <div class="faint small">{{ e.what }}{% if e.job.created_by %} · {{ e.job.created_by }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %}</div>
+      </td>
+      <td class="small" style="white-space:nowrap">
+        {% if e.unreachable %}<span class="status fail"><span class="dot"></span>{% translate "unreachable" %}</span>
+        {% elif e.failed %}<span class="status fail" title="{{ e.failed|join:', ' }}"><span class="dot"></span>{% blocktranslate with v_0=e.failed.0|truncatechars:40 %}failed: {{ v_0 }}{% endblocktranslate %}</span>
+        {% elif e.changed %}<span class="status warn"><span class="dot"></span>{{ e.changed }} {% if e.job.check_mode %}{% translate "would change" %}{% else %}{% translate "changed" %}{% endif %}</span>
+        {% elif e.ok %}<span class="status ok"><span class="dot"></span>{% translate "no changes" %}</span>
+        {% else %}{% include "core/_status.html" with status=e.job.status label=e.job.get_status_display %}{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty">{% translate "Nothing has run on this host yet." %}</div>{% endif %}

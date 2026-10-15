@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Infrastructure - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Infrastructure" %}</h1><p class="subtitle">{% translate "OpenTofu projects. Plan, look at the changes, then apply." %}</p></div>
+  {% if access.manages_inventory and access.edit_tofu %}<a class="btn primary" href="{% url 'tofu_project_create' %}">{% translate "New project" %}</a>{% endif %}
+</div>
+<div class="card">
+{% if projects %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Project" %}</th><th>{% translate "Host group" %}</th><th>{% translate "Source" %}</th><th>{% translate "Last run" %}</th></tr></thead>
+    <tbody>
+    {% for project in projects %}
+      {% with last=project.jobs.all|first %}
+      <tr>
+        <td><a href="{{ project.get_absolute_url }}">{{ project.name }}</a>{% if project.description %}<div class="faint small">{{ project.description }}</div>{% endif %}</td>
+        <td><span class="tag">{{ project.host_group.name }}</span></td>
+        <td class="faint small">{% if project.is_git %}<span class="mono">{{ project.git_url|truncatechars:48 }}</span>{% else %}{% translate "files in Loona" %}{% endif %}</td>
+        <td>{% if last %}<a href="{{ last.get_absolute_url }}">{% include "core/_status.html" with status=last.status label=last.get_kind_display %}</a> <span class="faint small">{{ last.created_at|ago }}</span>{% else %}<span class="faint">{% translate "never" %}</span>{% endif %}</td>
+      </tr>
+      {% endwith %}
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="empty">{% translate "No projects yet." %}{% if access.manages_inventory and access.edit_tofu %} <a href="{% url 'tofu_project_create' %}">{% translate "Create one" %}</a> {% translate "from a Git repository or from files kept here." %}{% endif %}</div>
+{% endif %}
+</div>
+{% endblock %}

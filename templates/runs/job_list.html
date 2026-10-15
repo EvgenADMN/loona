@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Jobs - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Jobs" %}</h1><p class="subtitle">{% translate "Every run Loona has started, newest first." %}</p></div>
+  {% if access.manages_inventory %}<a class="btn" href="{% url 'adhoc_launch' %}">{% translate "Run a command" %}</a>{% endif %}
+</div>
+
+<div class="card tight" style="margin-bottom:1rem">
+  <form method="get" class="btn-row">
+    <input class="input" type="text" name="q" value="{{ q }}" placeholder="{% translate "Search by playbook" %}" style="max-width:280px">
+    <select class="input" name="status" style="max-width:180px">
+      <option value="">{% translate "Any status" %}</option>
+      {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select class="input" name="kind" style="max-width:200px">
+      <option value="">{% translate "Playbook runs" %}</option>
+      <option value="system" {% if kind == 'system' %}selected{% endif %}>{% translate "Key management" %}</option>
+      <option value="all" {% if kind == 'all' %}selected{% endif %}>{% translate "Everything" %}</option>
+    </select>
+    <button class="btn" type="submit">{% translate "Filter" %}</button>
+    {% if q or status or kind %}<a class="btn ghost" href="{% url 'job_list' %}">{% translate "Reset" %}</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+{% if jobs %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>#</th><th>{% translate "Playbook" %}</th><th>{% translate "Status" %}</th><th>{% translate "By" %}</th><th>{% translate "Started" %}</th><th>{% translate "Duration" %}</th></tr></thead>
+    <tbody>
+    {% for job in jobs %}
+      <tr>
+        <td class="faint mono">{{ job.pk }}</td>
+        <td>
+          <a href="{{ job.get_absolute_url }}">{{ job.playbook_name }}</a>
+          {% if job.is_plan %} <span class="badge">{% translate "preview" %}</span>{% elif job.plan_id %} <span class="badge">{% translate "apply" %}</span>{% endif %}
+          {% if job.is_system %} <span class="badge">{% translate "system" %}</span>{% endif %}
+        </td>
+        <td>{% include "core/_status.html" with status=job.status label=job.get_status_display %}</td>
+        <td class="faint small">{{ job.created_by|default:"-" }}</td>
+        <td class="faint small">{{ job.created_at|ago }}</td>
+        <td class="faint small">{{ job.duration|duration }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}<div class="empty">{% translate "No jobs match." %}</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Executors - Administration - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Administration" %}</h1><p class="subtitle">{% translate "Executors run playbooks in networks Loona cannot reach. Their agents connect out to Loona; nothing connects in." %}</p></div>
+  <a class="btn primary" href="{% url 'executor_create' %}">{% translate "New executor" %}</a>
+</div>
+{% include "administration/_nav.html" %}
+<div class="card">
+{% if rows %}
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>{% translate "Executor" %}</th><th>{% translate "Agents" %}</th><th>{% translate "Groups" %}</th><th>{% translate "Runs" %}</th></tr></thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td><a href="{{ row.executor.get_absolute_url }}">{{ row.executor.name }}</a>{% if not row.executor.enabled %} <span class="badge">{% translate "disabled" %}</span>{% endif %}
+          {% if row.executor.description %}<div class="faint small">{{ row.executor.description }}</div>{% endif %}</td>
+        <td>{% if row.online %}<span class="status ok"><span class="dot"></span>{% blocktranslate with online=row.online|length %}{{ online }} online{% endblocktranslate %}</span>{% elif row.agents %}<span class="status fail"><span class="dot"></span>{% translate "offline" %}</span>{% else %}<span class="faint small">{% translate "never connected" %}</span>{% endif %}</td>
+        <td class="small">{% for group in row.executor.groups.all %}<a href="{{ group.get_absolute_url }}">{{ group.name }}</a>{% if not forloop.last %}, {% endif %}{% empty %}<span class="faint">{% translate "none" %}</span>{% endfor %}</td>
+        <td class="small">{% if row.running %}<span class="status run"><span class="dot"></span>{% blocktranslate with running=row.running %}{{ running }} running{% endblocktranslate %}</span> {% endif %}{% if row.waiting %}<span class="status warn"><span class="dot"></span>{% blocktranslate with waiting=row.waiting %}{{ waiting }} waiting{% endblocktranslate %}</span>{% endif %}{% if not row.running and not row.waiting %}<span class="faint">{% translate "idle" %}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="empty">{% translate "No executors. Every run goes from Loona itself. Make one for a DMZ, a plant network or another cloud, then give it host groups." %}</div>
+{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if file.pk %}{{ file.path }}{% else %}{% translate "New file" %}{% endif %} {% blocktranslate %}- {{ project }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% if file.pk %}{{ file.path }}{% else %}{% translate "New file" %}{% endif %}</h1><p class="subtitle">{% translate "in" %} <a href="{{ project.get_absolute_url }}">{{ project.name }}</a></p></div></div>
+<div class="card">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:.6rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{{ project.get_absolute_url }}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+  {% if file.pk %}
+  {% blocktranslate asvar confirm_text with path=file.path %}Delete {{ path }}?{% endblocktranslate %}<form method="post" action="{% url 'project_file_delete' project.pk file.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:.6rem">{% csrf_token %}
+    <button class="btn danger" type="submit">{% translate "Delete file" %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

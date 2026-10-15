@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% if item.pk %}{% blocktranslate %}Edit {{ item }}{% endblocktranslate %}{% else %}{% translate "New catalog item" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<script src="{% asset 'js/survey-editor.js' %}"></script>
+<div class="page-head"><h1>{% if item.pk %}{% blocktranslate %}Edit {{ item }}{% endblocktranslate %}{% else %}{% translate "New catalog item" %}{% endif %}</h1></div>
+<form method="post">{% csrf_token %}
+{% if form.non_field_errors %}{% for e in form.non_field_errors %}<div class="message error">{{ e }}</div>{% endfor %}{% endif %}
+<div class="split">
+  <div>
+    <div class="card">
+      {% include "core/_field.html" with field=form.name %}
+      {% include "core/_field.html" with field=form.description %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.tofu_project %}
+        {% include "core/_field.html" with field=form.host_group %}
+      </div>
+      {% include "core/_field.html" with field=form.teams %}
+      <div class="form-grid">
+        {% include "core/_field.html" with field=form.max_per_user %}
+      </div>
+      {% include "core/_field.html" with field=form.approval_required %}
+      {% include "core/_field.html" with field=form.enabled %}
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "What the project needs" %}</h3></div>
+      <p class="small" style="margin-top:0">{% blocktranslate %}Loona hands every plan the live requests; the project creates a machine for each and lists it in <span class="mono">loona_hosts</span>. Answers arrive as strings.{% endblocktranslate %}</p>
+<pre class="yaml">variable "{{ variable }}" {
+  type = map(object({
+    name   = string
+    item   = string
+    owner  = string
+    values = map(string)
+  }))
+  default = {}
+}
+
+resource "..." "vm" {
+  for_each = var.{{ variable }}
+  name     = each.value.name
+  size     = each.value.values["size"]
+  # put var.loona_ssh_public_key in its authorized_keys
+}
+
+output "loona_hosts" {
+  value = { for k, vm in ... .vm : k => {
+    address = vm.ipv4_address
+  } }
+}</pre>
+    </div>
+  </div>
+  {% include "runs/_survey_editor.html" with input_name="fields_spec" title=_("Form") errors=form.fields_spec.errors intro=_("What to ask besides the machine's name. Each answer goes to the project as values[variable].") empty=_("Nothing else to ask: just a name.") %}
+</div>
+<div class="btn-row" style="margin-top:1rem">
+  <button class="btn primary" type="submit">{% translate "Save" %}</button>
+  <a class="btn ghost" href="{% url 'catalog_home' %}">{% translate "Cancel" %}</a>
+</div>
+</form>
+{% if item.pk %}
+{% blocktranslate asvar confirm_text with name=item.name %}Delete {{ name }}? With requests it is only switched off.{% endblocktranslate %}<form method="post" action="{% url 'catalog_item_delete' item.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:1rem">{% csrf_token %}
+  <button class="btn danger" type="submit">{% translate "Delete" %}</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,5 @@
+{% load i18n %}<nav class="subnav">
+  <a href="{% url 'playbook_list' %}" class="{% if tab == 'playbooks' %}active{% endif %}">{% translate "Playbooks" %}</a>
+  <a href="{% url 'template_list' %}" class="{% if tab == 'templates' %}active{% endif %}">{% translate "Templates" %}</a>
+  <a href="{% url 'project_list' %}" class="{% if tab == 'projects' %}active{% endif %}">{% translate "Projects" %}</a>
+</nav>

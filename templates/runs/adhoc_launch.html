@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Run a command - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{% translate "Run a command" %}</h1>
+    <p class="subtitle">{% blocktranslate %}One module on the hosts you pick, like <span class="mono">ansible -m</span>. Needs the Admin role on every target.{% endblocktranslate %}</p>
+  </div>
+  <a class="btn ghost" href="{% url 'job_list' %}">{% translate "Jobs" %}</a>
+</div>
+
+{% if not modules %}
+<div class="message error">{% translate "Ad-hoc commands are off: no modules are allowed" %}{% if user.is_superuser %}{% translate ". List some in" %} <a href="{% url 'admin_general' %}">{% translate "Administration - General" %}</a>{% endif %}.</div>
+{% endif %}
+
+<form method="post">{% csrf_token %}
+  {% for error in form.non_field_errors %}<div class="message error">{{ error }}</div>{% endfor %}
+  <div class="split">
+    <div>
+      <div class="card">
+        <div class="card-head"><h2>{% translate "Command" %}</h2></div>
+        {% include "core/_field.html" with field=form.adhoc_module %}
+        <datalist id="adhoc-modules">{% for m in modules %}<option value="{{ m }}">{% endfor %}</datalist>
+        {% include "core/_field.html" with field=form.adhoc_args %}
+        <div class="btn-row">
+          {% include "core/_field.html" with field=form.adhoc_become %}
+          {% include "core/_field.html" with field=form.diff_mode %}
+        </div>
+        {% if not user.is_superuser %}<p class="help">{% translate "Taken literally:" %} <span class="mono">{% templatetag openvariable %} … {% templatetag closevariable %}</span> {% translate "is not expanded." %}</p>{% endif %}
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-head"><h3>{% translate "Run options" %}</h3></div>
+        <div class="form-grid">
+          {% include "core/_field.html" with field=form.limit %}
+          {% include "core/_field.html" with field=form.forks %}
+          {% include "core/_field.html" with field=form.verbosity %}
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:1rem">
+        <button class="btn primary" type="submit" name="action" value="run">{% translate "Run now" %}</button>
+        <button class="btn" type="submit" name="action" value="plan">{% translate "Preview" %}</button>
+      </div>
+      <p class="help">{% translate "A preview runs in check mode: modules that support it say what they would change; command, shell and raw do not run at all, so the preview is the command itself, for someone to approve where that is needed." %}</p>
+    </div>
+    <div class="card">
+      <div class="card-head"><h2>{% translate "Targets" %}</h2></div>
+      <div class="grid cols-2">
+        {% include "core/_field.html" with field=form.target_groups %}
+        {% include "core/_field.html" with field=form.target_hosts %}
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

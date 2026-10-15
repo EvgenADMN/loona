@@ -1,0 +1,65 @@
+{% load i18n %}<div class="split">
+  <div>
+    <div class="card-head">
+      <h2>{% translate "Tasks" %} <span class="faint small">({{ tasks|length }})</span></h2>
+      {% if access.edit_playbooks %}
+      <div class="btn-row">
+        <a class="btn" href="{% url 'playbook_import' playbook.pk %}">{% translate "Import YAML" %}</a>
+        <a class="btn primary" href="{% url 'task_create' playbook.pk %}">{% translate "Add task" %}</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% for task in tasks %}
+      <div class="task {% if not task.enabled %}disabled{% endif %}">
+        <div class="num">{{ forloop.counter }}</div>
+        <div class="body">
+          <div class="title">
+            {% if access.edit_playbooks %}<a href="{% url 'task_update' task.pk %}">{{ task.name|default:task.module_label }}</a>{% else %}{{ task.name|default:task.module_label }}{% endif %}
+            <span class="tag">{{ task.module }}</span>
+          </div>
+          {% if task.summary %}<div class="args">{{ task.summary }}</div>{% endif %}
+          <div class="meta">
+            {% if task.when %}<span class="tag">{% blocktranslate with when=task.when|truncatechars:50 %}when: {{ when }}{% endblocktranslate %}</span>{% endif %}
+            {% if task.loop %}<span class="tag">{% translate "loop" %}</span>{% endif %}
+            {% if task.become %}<span class="tag">{% blocktranslate with become=task.become %}become: {{ become }}{% endblocktranslate %}</span>{% endif %}
+            {% if task.register %}<span class="tag">{% blocktranslate with register=task.register %}register: {{ register }}{% endblocktranslate %}</span>{% endif %}
+            {% if task.ignore_errors %}<span class="tag">{% translate "ignore_errors" %}</span>{% endif %}
+            {% if task.tags %}<span class="tag">{% blocktranslate with tags=task.tags %}tags: {{ tags }}{% endblocktranslate %}</span>{% endif %}
+            {% if not task.enabled %}<span class="badge warn">{% translate "skipped" %}</span>{% endif %}
+          </div>
+        </div>
+        {% if access.edit_playbooks %}
+        <div class="controls">
+          <form method="post" action="{% url 'task_move' task.pk 'up' %}">{% csrf_token %}
+            <button class="btn tiny ghost" type="submit" title="{% translate "Move up" %}" {% if forloop.first %}disabled{% endif %}>↑</button>
+          </form>
+          <form method="post" action="{% url 'task_move' task.pk 'down' %}">{% csrf_token %}
+            <button class="btn tiny ghost" type="submit" title="{% translate "Move down" %}" {% if forloop.last %}disabled{% endif %}>↓</button>
+          </form>
+          <form method="post" action="{% url 'task_toggle' task.pk %}">{% csrf_token %}
+            <button class="btn tiny ghost" type="submit" title="{% translate "Enable or skip" %}">{% if task.enabled %}◉{% else %}○{% endif %}</button>
+          </form>
+          {% translate "Remove this task?" as confirm_text %}<form method="post" action="{% url 'task_delete' task.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}
+            <button class="btn tiny danger" type="submit" title="{% translate "Delete" %}">✕</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="empty">
+        {% translate "No tasks yet." %}
+        {% if access.edit_playbooks %}<br>
+        <a href="{% url 'task_create' playbook.pk %}">{% translate "Add one" %}</a> {% translate "or" %} <a href="{% url 'playbook_import' playbook.pk %}">{% translate "paste existing YAML" %}</a>.{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h3>{% translate "Generated YAML" %}</h3>
+      <span class="faint small">{% translate "read only" %}</span>
+    </div>
+    <pre class="yaml">{{ generated_yaml }}</pre>
+  </div>
+</div>

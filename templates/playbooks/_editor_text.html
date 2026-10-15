@@ -1,0 +1,19 @@
+{% load i18n %}<div class="card">
+  <div class="card-head">
+    <h2>{% translate "Playbook YAML" %}</h2>
+    <span class="faint small">
+      {% if playbook.tasks.exists %}{% blocktranslate count counter=playbook.task_count %}{{ counter }} graphical task kept for when you switch back.{% plural %}{{ counter }} graphical tasks kept for when you switch back.{% endblocktranslate %}{% endif %}
+    </span>
+  </div>
+  {% if not access.edit_playbooks %}
+  <pre class="yaml">{{ playbook.text_content }}</pre>
+  {% else %}
+  <form method="post" action="{% url 'playbook_save_text' playbook.pk %}">{% csrf_token %}
+    {% include "core/_form.html" with form=text_form %}
+    <div class="btn-row" style="margin-top:.6rem">
+      <button class="btn primary" type="submit">{% translate "Save YAML" %}</button>
+      <a class="btn ghost" href="{% url 'playbook_list' %}">{% translate "Back" %}</a>
+    </div>
+  </form>
+  {% endif %}
+</div>

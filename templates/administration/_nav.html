@@ -1,0 +1,14 @@
+{% load i18n %}<nav class="admin-nav">
+  <a href="{% url 'admin_overview' %}" class="{% if section == 'overview' %}active{% endif %}">{% translate "Overview" %}</a>
+  <a href="{% url 'admin_general' %}" class="{% if section == 'general' %}active{% endif %}">{% translate "General" %}</a>
+  <a href="{% url 'admin_ldap' %}" class="{% if section == 'ldap' %}active{% endif %}">{% translate "Authentication" %}</a>
+  <a href="{% url 'admin_sso' %}" class="{% if section == 'sso' %}active{% endif %}">{% translate "Single sign-on" %}</a>
+  <a href="{% url 'admin_vault' %}" class="{% if section == 'vault' %}active{% endif %}">{% translate "HashiCorp Vault" %}</a>
+  <a href="{% url 'admin_directory' %}" class="{% if section == 'directory' %}active{% endif %}">{% translate "Directory groups" %}</a>
+  <a href="{% url 'admin_users' %}" class="{% if section == 'users' %}active{% endif %}">{% translate "Users" %}</a>
+  <a href="{% url 'team_list' %}" class="{% if section == 'teams' %}active{% endif %}">{% translate "Teams" %}</a>
+  <a href="{% url 'executor_list' %}" class="{% if section == 'executors' %}active{% endif %}">{% translate "Executors" %}</a>
+  <a href="{% url 'credential_list' %}" class="{% if section == 'credentials' %}active{% endif %}">{% translate "Credentials" %}</a>
+  <a href="{% url 'admin_notifications' %}" class="{% if section == 'notifications' %}active{% endif %}">{% translate "Notifications" %}</a>
+  <a href="{% url 'admin_audit' %}" class="{% if section == 'audit' %}active{% endif %}">{% translate "Audit log" %}</a>
+</nav>

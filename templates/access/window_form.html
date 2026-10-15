@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}Maintenance window - {{ group }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{% blocktranslate with name=group.name %}Maintenance window for {{ name }}{% endblocktranslate %}</h1>
+<p class="subtitle">{% blocktranslate with name=group.name %}Inside a window, changes follow the group's approval rule. Outside every window, applying anything needs a second person's approval and Run now is off. It covers the groups nested under {{ name }} too.{% endblocktranslate %}</p></div></div>
+<div class="card" style="max-width:640px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_field.html" with field=form.weekdays %}
+    <div class="form-grid">
+      {% include "core/_field.html" with field=form.start %}
+      {% include "core/_field.html" with field=form.end %}
+    </div>
+    <p class="help" style="margin-top:-.4rem">{% translate "An end at or before the start runs past midnight: Sat 22:00 until 04:00 ends on Sunday morning." %}</p>
+    {% include "core/_field.html" with field=form.timezone %}
+    <datalist id="timezones">{% for tz in timezones %}<option value="{{ tz }}">{% endfor %}</datalist>
+    {% include "core/_field.html" with field=form.description %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Add window" %}</button>
+      <a class="btn ghost" href="{{ group.get_absolute_url }}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

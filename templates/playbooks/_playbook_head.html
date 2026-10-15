@@ -1,0 +1,24 @@
+{% load i18n %}<div class="page-head">
+  <div>
+    <h1>{{ playbook.name }}</h1>
+    <p class="subtitle">{% if playbook.description %}{{ playbook.description }}{% else %}{% translate "No description." %}{% endif %}{% if playbook.project %} {% translate "· project" %} <a href="{{ playbook.project.get_absolute_url }}">{{ playbook.project.name }}</a>{% endif %}</p>
+  </div>
+  <div class="btn-row">
+    {% if access.edit_playbooks and playbook.mode != "file" %}
+    <form class="mode-switch" method="post" role="group" aria-label="{% translate "Editor" %}"
+          action="{% url 'playbook_switch_mode' playbook.pk %}"
+          hx-post="{% url 'playbook_switch_mode' playbook.pk %}"
+          hx-target="#editor" hx-swap="outerHTML">{% csrf_token %}
+      <button type="submit" name="mode" value="graphical"
+              class="{% if playbook.is_graphical %}on{% endif %}"
+              aria-pressed="{% if playbook.is_graphical %}true{% else %}false{% endif %}">{% translate "Graphical" %}</button>
+      <button type="submit" name="mode" value="text"
+              class="{% if not playbook.is_graphical %}on{% endif %}"
+              aria-pressed="{% if playbook.is_graphical %}false{% else %}true{% endif %}">{% translate "YAML" %}</button>
+    </form>
+    <a class="btn" href="{% url 'playbook_settings' playbook.pk %}">{% translate "Settings" %}</a>
+    {% endif %}
+    <a class="btn" href="{% url 'playbook_export' playbook.pk %}">{% translate "Export" %}</a>
+    {% if access.runs_playbooks %}<a class="btn primary" href="{% url 'job_launch' playbook.pk %}">{% translate "Run playbook" %}</a>{% endif %}
+  </div>
+</div>

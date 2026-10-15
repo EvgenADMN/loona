@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}{{ project }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ project.name }}</h1>
+    <p class="subtitle">{% blocktranslate with description=project.description|default:"OpenTofu project" %}{{ description }} · group{% endblocktranslate %} <span class="tag">{{ project.host_group.name }}</span></p>
+  </div>
+  <div class="btn-row">
+    {% if can_run %}
+      <form method="post" action="{% url 'tofu_project_plan' project.pk %}">{% csrf_token %}
+        <button class="btn primary" type="submit">{% translate "Plan" %}</button>
+      </form>
+    {% endif %}
+    {% if can_admin %}
+      <form method="post" action="{% url 'tofu_project_plan' project.pk %}">{% csrf_token %}
+        <input type="hidden" name="destroy" value="1">
+        <button class="btn danger" type="submit">{% translate "Plan destroy" %}</button>
+      </form>
+    {% endif %}
+    {% if can_edit %}
+      <a class="btn" href="{% url 'tofu_project_update' project.pk %}">{% translate "Edit" %}</a>
+    {% endif %}
+    {% if can_admin and not can_edit %}
+      <a class="btn danger" href="{% url 'tofu_project_delete' project.pk %}">{% translate "Delete" %}</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="split">
+  <div>
+    <div class="card">
+      <div class="card-head"><h2>{% translate "Runs" %}</h2></div>
+      {% if jobs %}
+        <table><tbody>
+        {% for job in jobs %}
+          <tr>
+            <td><a href="{{ job.get_absolute_url }}">#{{ job.pk }} {{ job.get_kind_display }}{% if job.tofu_destroy %} {% translate "(destroy)" %}{% endif %}</a></td>
+            <td>{% include "core/_status.html" with status=job.status label=job.get_status_display %}</td>
+            <td class="faint small">{% with t=job.stats.tofu %}{% if t and job.kind == "tofu_plan" %}+{{ t.add }} ~{{ t.change }} −{{ t.destroy }}{% endif %}{% endwith %}</td>
+            <td class="faint small mono">{{ job.tofu_revision|truncatechars:14 }}</td>
+            <td class="faint small" style="text-align:right">{{ job.created_by|default:"" }} · {{ job.created_at|ago }}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<div class="empty">{% translate "No runs yet." %}{% if can_run %} {% translate "Press Plan to see what OpenTofu would do." %}{% endif %}</div>{% endif %}
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h2>{% translate "Machines" %}</h2><span class="faint small">{% translate "from the loona_hosts output" %}</span></div>
+      {% if hosts %}
+        <table><tbody>
+        {% for host in hosts %}
+          <tr>
+            <td><a href="{{ host.get_absolute_url }}">{{ host.name }}</a></td>
+            <td class="mono faint small">{{ host.ansible_host }}:{{ host.port }}</td>
+            <td>
+              {% if host.bootstrapped_at %}<span class="status ok"><span class="dot"></span>{% translate "ready" %}</span>
+              {% elif host.bootstrap_error %}<span class="status fail" title="{{ host.bootstrap_error }}"><span class="dot"></span>{% translate "setup failed" %}</span>
+              {% else %}<span class="status run"><span class="dot"></span>{% translate "setting up" %}</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}
+        <p class="faint small" style="margin:0">{% translate "None yet. Declare them in an output and Loona adds them to" %} <span class="tag">{{ project.host_group.name }}</span>{% translate ", gives each its own SSH key" %}{% if project.baseline_playbook %} {% blocktranslate with name=project.baseline_playbook.name %}and runs <b>{{ name }}</b>{% endblocktranslate %}{% endif %}:</p>
+        <pre class="yaml small" style="margin-top:.5rem">output "loona_hosts" {
+  value = {
+    "web-01" = {
+      address = proxmox_virtual_environment_vm.web.ipv4_addresses[1][0]
+      user    = "root"                  # optional, default {{ project.bootstrap_user }}
+      groups  = ["web"]                 # optional, groups under {{ project.host_group.name }}
+    }
+  }
+}</pre>
+      {% endif %}
+      {% if bootstrap_key %}
+        <details style="margin-top:.6rem"><summary class="small">{% translate "Bootstrap key for new machines" %}</summary>
+          <p class="help">{% blocktranslate %}Available to the configuration as <span class="mono">var.loona_ssh_public_key</span> - put it in cloud-init's <span class="mono">ssh_authorized_keys</span>. Loona removes it from each machine once the machine has its own key.{% endblocktranslate %}</p>
+          <pre class="yaml small" style="white-space:pre-wrap;word-break:break-all">{{ bootstrap_key }}</pre>
+        </details>
+      {% endif %}
+    </div>
+
+    {% if not project.is_git %}
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h2>{% translate "Files" %}</h2>{% if can_edit %}<a class="btn tiny" href="{% url 'tofu_file_create' project.pk %}">{% translate "Add file" %}</a>{% endif %}</div>
+      {% if files %}
+        <table><tbody>
+        {% for file in files %}
+          <tr>
+            <td class="mono">{% if can_edit %}<a href="{% url 'tofu_file_edit' project.pk file.pk %}">{{ file.path }}</a>{% else %}{{ file.path }}{% endif %}</td>
+            <td class="faint small">{% blocktranslate with content=file.content|length updated_at=file.updated_at|ago %}{{ content }} chars · {{ updated_at }}{% endblocktranslate %}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<div class="empty">{% translate "No files yet." %}</div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head"><h3>{% translate "Configuration" %}</h3></div>
+      <table><tbody>
+        {% if project.is_git %}
+          <tr><td class="faint">{% translate "Repository" %}</td><td class="mono small">{{ project.git_url }}</td></tr>
+          <tr><td class="faint">{% translate "Branch or tag" %}</td><td class="mono">{{ project.git_ref|default:"HEAD" }}</td></tr>
+          <tr><td class="faint">{% translate "Folder" %}</td><td class="mono">{{ project.git_path|default:"/" }}</td></tr>
+          <tr><td class="faint">{% translate "Credential" %}</td><td>{{ project.git_credential|default:"none" }}</td></tr>
+        {% else %}
+          <tr><td class="faint">{% translate "Source" %}</td><td>{% translate "files kept in Loona" %}</td></tr>
+        {% endif %}
+      </tbody></table>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Drift" %}</h3></div>
+      {% if drift %}
+        <span class="status {{ drift.badge }}"><span class="dot"></span>{{ drift.get_status_display }}</span>
+        <span class="faint small">· {{ drift.get_interval_minutes_display|lower }}{% if drift.last_job %} {% translate "· last" %} <a href="{{ drift.last_job.get_absolute_url }}">#{{ drift.last_job.pk }}</a> {{ drift.last_run_at|ago }}{% endif %}</span>
+        {% if drift.status == "drifted" %}<p class="small" style="margin:.4rem 0 0">{% blocktranslate with drifted=drift.drifted|join:", " %}Changed outside Loona: <span class="mono">{{ drifted }}</span>. Open the check to see the diff; applying it puts things back.{% endblocktranslate %}</p>{% endif %}
+      {% elif can_run %}
+        <form method="post" action="{% url 'drift_watch_project' project.pk %}">{% csrf_token %}
+          <p class="faint small" style="margin-top:0">{% translate "Plan once a day and flag anything changed behind OpenTofu's back." %}</p>
+          <button class="btn tiny" type="submit">{% translate "Watch for drift" %}</button>
+        </form>
+      {% else %}<p class="faint small" style="margin:0">{% translate "Not watched." %}</p>{% endif %}
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "State" %}</h3></div>
+      {% if state %}
+        <p class="small" style="margin-top:0">{% blocktranslate with serial=state.serial created_at=state.created_at|ago %}Serial {{ serial }}, written {{ created_at }}{% endblocktranslate %}{% if state.job_id %} {% translate "by" %} <a href="{% url 'job_detail' state.job_id %}">#{{ state.job_id }}</a>{% endif %}.</p>
+        {% with resources=project.managed_resources %}
+          {% if resources %}
+            <details><summary class="small">{% blocktranslate count counter=resources|length %}{{ counter }} resource{% plural %}{{ counter }} resources{% endblocktranslate %}</summary>
+              <ul class="mono small" style="margin:.4rem 0 0; padding-left:1.1rem">{% for r in resources %}<li>{{ r }}</li>{% endfor %}</ul>
+            </details>
+          {% else %}<p class="faint small">{% translate "Manages nothing." %}</p>{% endif %}
+        {% endwith %}
+        {% if outputs %}
+          <h3 style="margin-top:.9rem">{% translate "Outputs" %}</h3>
+          <table><tbody>{% for name, value in outputs.items %}<tr><td class="mono">{{ name }}</td><td class="mono small">{{ value }}</td></tr>{% endfor %}</tbody></table>
+        {% endif %}
+      {% else %}
+        <p class="faint small" style="margin:0">{% translate "Nothing applied yet. Loona keeps the state, encrypted, once there is some." %}</p>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <div class="card-head"><h3>{% translate "Variables" %}</h3>{% if can_edit %}<a class="btn tiny" href="{% url 'tofu_variable_create' project.pk %}">{% translate "Add" %}</a>{% endif %}</div>
+      {% if variables %}
+        <table><tbody>
+        {% for v in variables %}
+          <tr>
+            <td class="mono">{% if can_edit %}<a href="{% url 'tofu_variable_edit' project.pk v.pk %}">{{ v.name }}</a>{% else %}{{ v.name }}{% endif %}</td>
+            <td class="faint small">{% if v.kind == "env" %}{% translate "environment" %}{% else %}{% translate "input" %}{% endif %}</td>
+            <td class="mono small">{% if v.sensitive %}<span class="faint">{% translate "hidden" %}</span>{% else %}{{ v.value|truncatechars:40 }}{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody></table>
+      {% else %}<p class="faint small" style="margin:0">{% translate "None. Provider credentials go here, e.g. PROXMOX_VE_API_TOKEN as a hidden environment variable." %}</p>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

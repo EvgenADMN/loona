@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ title }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ title }}</h1></div>
+<div class="card" style="max-width:760px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% if playbook %}{{ playbook.get_absolute_url }}{% else %}{% url 'playbook_list' %}{% endif %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% if playbook %}
+<div class="card" style="max-width:760px;margin-top:1rem">
+  <div class="card-head"><h3>{% translate "Danger zone" %}</h3></div>
+  <div class="btn-row">
+    <form method="post" action="{% url 'playbook_duplicate' playbook.pk %}">{% csrf_token %}
+      <button class="btn" type="submit">{% translate "Duplicate" %}</button>
+    </form>
+    {% blocktranslate asvar confirm_text with name=playbook.name %}Delete {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'playbook_delete' playbook.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}
+      <button class="btn danger" type="submit">{% translate "Delete playbook" %}</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

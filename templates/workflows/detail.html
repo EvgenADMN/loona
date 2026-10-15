@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% blocktranslate %}{{ workflow }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ workflow.name }}</h1><p class="subtitle">{{ workflow.description|default:"" }} <span class="tag">{{ workflow.host_group.name }}</span></p></div>
+  <div class="btn-row">
+    {% if can_edit %}<a class="btn" href="{% url 'workflow_step_create' workflow.pk %}">{% translate "Add step" %}</a><a class="btn ghost" href="{% url 'workflow_update' workflow.pk %}">{% translate "Edit" %}</a>{% endif %}
+    <a class="btn ghost" href="{% url 'workflow_list' %}">{% translate "Workflows" %}</a>
+  </div>
+</div>
+
+<div class="card">
+  {% if steps %}{% include "workflows/_graph.html" %}{% else %}<div class="empty">{% translate "No steps yet." %}{% if can_edit %} <a href="{% url 'workflow_step_create' workflow.pk %}">{% translate "Add the first one" %}</a>.{% endif %}</div>{% endif %}
+</div>
+
+<div class="split" style="margin-top:1rem">
+  <div class="card">
+    <div class="card-head"><h2>{% translate "Steps" %}</h2></div>
+    {% if steps %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>{% translate "Step" %}</th><th>{% translate "Does" %}</th><th>{% translate "After" %}</th><th></th></tr></thead>
+      <tbody>
+      {% for s in steps %}
+        <tr><td>{{ s.name }}</td>
+          <td class="small">{{ s.get_kind_display }}{% if s.target %}<div class="faint">{{ s.target }}</div>{% endif %}</td>
+          <td class="small">{% for parent, cond in s.after %}<div>{{ parent }} <span class="faint">{{ cond }}</span></div>{% empty %}<span class="faint">{% translate "start" %}</span>{% endfor %}</td>
+          <td style="text-align:right">{% if can_edit %}<a class="btn tiny ghost" href="{% url 'workflow_step_update' workflow.pk s.pk %}">{% translate "Edit" %}</a>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Run it" %}</h3></div>
+    {% if not can_run %}<p class="faint small">{% blocktranslate with name=workflow.host_group.name %}Running takes the Operator role on {{ name }}.{% endblocktranslate %}</p>
+    {% elif missing %}<p class="small">{% blocktranslate with missing=missing|join:"; " %}You cannot run every step: it takes {{ missing }}.{% endblocktranslate %}</p>
+    {% else %}
+    <form method="post" action="{% url 'workflow_start' workflow.pk %}">{% csrf_token %}
+      <details class="small" style="margin-bottom:.6rem"><summary class="faint">{% translate "Extra variables for this run" %}</summary>
+        <textarea class="input code" name="extra_vars" rows="3" placeholder="app_version: 1.5"></textarea></details>
+      <div class="btn-row"><button class="btn primary" type="submit">{% translate "Run now" %}</button>
+      <a class="btn ghost" href="{% url 'schedule_create' %}?workflow={{ workflow.pk }}">{% translate "Schedule…" %}</a></div>
+    </form>
+    <p class="help">{% translate "Steps run with your rights. Group rules still apply: where a change needs approval, the step waits for it." %}</p>
+    {% endif %}
+    <h3 style="margin-top:1rem">{% translate "Runs" %}</h3>
+    {% for r in runs %}
+      <div class="small" style="margin:.2rem 0"><a href="{{ r.get_absolute_url }}">#{{ r.pk }}</a> {% include "core/_status.html" with status=r.status label=r.get_status_display %} <span class="faint">{% blocktranslate with created_at=r.created_at|ago created_by=r.created_by|default:"?" %}{{ created_at }} by {{ created_by }}{% endblocktranslate %}{% if r.schedule %} {% blocktranslate with name=r.schedule.name %}· schedule {{ name }}{% endblocktranslate %}{% endif %}</span></div>
+    {% empty %}<p class="faint small">{% translate "None yet." %}</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

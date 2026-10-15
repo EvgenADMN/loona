@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if workflow.pk %}{% blocktranslate %}Edit {{ workflow }}{% endblocktranslate %}{% else %}{% translate "New workflow" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if workflow.pk %}{% blocktranslate %}Edit {{ workflow }}{% endblocktranslate %}{% else %}{% translate "New workflow" %}{% endif %}</h1></div>
+<div class="card" style="max-width:720px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% if workflow.pk %}{% translate "Save" %}{% else %}{% translate "Create, then add steps" %}{% endif %}</button>
+      <a class="btn ghost" href="{% if workflow.pk %}{{ workflow.get_absolute_url }}{% else %}{% url 'workflow_list' %}{% endif %}">{% translate "Cancel" %}</a>
+    </div>
+  </form>
+</div>
+{% if workflow.pk %}
+{% blocktranslate asvar confirm_text with name=workflow.name %}Delete the workflow {{ name }} and its run history?{% endblocktranslate %}<form method="post" action="{% url 'workflow_delete' workflow.pk %}" data-confirm="{{ confirm_text }}" style="margin-top:1rem">{% csrf_token %}
+  <button class="btn danger" type="submit">{% translate "Delete workflow" %}</button>
+</form>
+{% endif %}
+{% endblock %}

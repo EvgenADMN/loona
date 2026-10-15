@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% if form.instance.pk %}{{ form.instance }}{% else %}{% translate "New host" %}{% endif %} {% translate "- Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if form.instance.pk %}{% blocktranslate with instance=form.instance %}Edit {{ instance }}{% endblocktranslate %}{% else %}{% translate "Add host" %}{% endif %}</h1></div>
+<div class="card" style="max-width:720px">
+  <form method="post">{% csrf_token %}
+    {% include "core/_form.html" %}
+
+    <div class="card tight" style="margin-top:1rem">
+      <h3>{% translate "Check the connection" %}</h3>
+      <p class="faint small">
+        {% blocktranslate trimmed %}Try these settings against the machine before saving. Nothing is written on the
+        far end and nothing here is stored - it just tells you whether the address, port
+        and login are right.{% endblocktranslate %}
+        {% if form.instance.pk %}{% translate "Leave the login empty to use what this host already has." %}{% endif %}
+      </p>
+      {% if form.instance.pk %}<input type="hidden" name="host" value="{{ form.instance.pk }}">{% endif %}
+      <div class="btn-row" style="align-items:center;flex-wrap:wrap">
+        <input class="input" type="text" name="username" autocomplete="off"
+               placeholder="{% translate "Login" %}" style="max-width:180px">
+        <input class="input" type="password" name="password" autocomplete="new-password"
+               placeholder="{% translate "Password" %}" style="max-width:200px">
+        <button class="btn" type="button"
+                hx-post="{% url 'host_probe' %}"
+                hx-include="closest form"
+                hx-target="#probe-result"
+                hx-swap="innerHTML"
+                hx-indicator="#probe-spinner">{% translate "Check connection" %}</button>
+        <span id="probe-spinner" class="faint small htmx-indicator">{% translate "checking..." %}</span>
+      </div>
+      <div id="probe-result" style="margin-top:.8rem"></div>
+    </div>
+
+    <div class="btn-row" style="margin-top:1rem">
+      <button class="btn primary" type="submit">{% translate "Save" %}</button>
+      <a class="btn ghost" href="{% url 'host_list' %}">{% translate "Cancel" %}</a>
+      {% if form.instance.pk %}
+        <a class="btn" href="{% url 'host_key' form.instance.pk %}">{% translate "SSH key" %}</a>
+        <a class="btn danger" style="margin-left:auto" href="{% url 'host_delete' form.instance.pk %}">{% translate "Delete" %}</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

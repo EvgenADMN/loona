@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktranslate %}{{ group }} - Loona{% endblocktranslate %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ group.name }}</h1><p class="subtitle">{{ group.description }}</p></div>
+  <div class="btn-row">
+    {% if group.pk in access.operator_groups %}<form method="post" action="{% url 'group_gather_facts' group.pk %}">{% csrf_token %}<button class="btn" type="submit">{% translate "Gather facts" %}</button></form>{% endif %}
+    {% if group.pk in access.admin_groups %}<a class="btn" href="{% url 'adhoc_launch' %}?group={{ group.pk }}">{% translate "Run a command" %}</a>
+    <a class="btn" href="{% url 'group_update' group.pk %}">{% translate "Edit" %}</a>{% endif %}
+  </div>
+</div>
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>{% translate "Effective hosts" %}</h2><span class="faint small">{% blocktranslate with effective_hosts=effective_hosts|length %}{{ effective_hosts }} total, nested groups included{% endblocktranslate %}</span></div>
+    {% if effective_hosts %}
+      <table>
+        <tbody>
+        {% for host in effective_hosts %}
+          <tr><td><a href="{{ host.get_absolute_url }}">{{ host.name }}</a></td><td class="mono faint">{{ host.ansible_host }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}<div class="empty">{% translate "No hosts in this group yet." %}</div>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Structure" %}</h3></div>
+    <table><tbody>
+      <tr><td class="faint">{% translate "Nested under" %}</td><td>{% for p in group.parents.all %}<span class="tag">{{ p.name }}</span>{% empty %}-{% endfor %}</td></tr>
+      <tr><td class="faint">{% translate "Approval" %}</td><td>{{ group.get_approval_policy_display }}</td></tr>
+      <tr><td class="faint">{% translate "Runs from" %}</td><td>{% with via=group.reached_via %}{% if via %}{% blocktranslate %}executor <b>{{ via }}</b>{% endblocktranslate %}{% if not group.executor_id %} <span class="faint small">{% translate "(from a group above)" %}</span>{% endif %}{% else %}{% translate "Loona itself" %}{% endif %}{% endwith %}</td></tr>
+      <tr><td class="faint">{% translate "Children" %}</td><td>{% for c in group.children.all %}<a class="tag" href="{% url 'group_detail' c.pk %}">{{ c.name }}</a>{% empty %}-{% endfor %}</td></tr>
+    </tbody></table>
+    {% if group.variables %}<h3 style="margin-top:1rem">{% translate "Group variables" %}</h3><pre class="yaml">{{ group.variables|pprint }}</pre>{% endif %}
+    <h3 style="margin-top:1rem">{% translate "Maintenance windows" %}</h3>
+    {% if windows %}
+      <p class="small" style="margin:.2rem 0 .4rem">{% if window_closed %}<span class="status warn"><span class="dot"></span>{% translate "Closed now" %}</span> <span class="faint">{% translate "- changes need approval" %}{% if window_closed != group %} {% blocktranslate with name=window_closed.name %}({{ name }} is outside its windows){% endblocktranslate %}{% endif %}.</span>{% else %}<span class="status ok"><span class="dot"></span>{% translate "Open now" %}</span>{% endif %}</p>
+      <table><tbody>
+      {% for w in windows %}
+        <tr><td class="small">{{ w.days_label }} {{ w.start|time:"H:i" }}-{{ w.end|time:"H:i" }} <span class="faint">{{ w.timezone }}</span>{% if w.description %}<div class="faint">{{ w.description }}</div>{% endif %}</td>
+          <td class="small faint">{% if w.host_group_id != group.pk %}{% blocktranslate with name=w.host_group.name %}from {{ name }}{% endblocktranslate %}{% endif %}</td>
+          <td style="text-align:right">{% if user.is_superuser and w.host_group_id == group.pk %}{% translate "Remove this window?" as confirm_text %}<form method="post" action="{% url 'window_delete' w.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% translate "Remove" %}</button></form>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}<p class="faint small" style="margin:0">{% translate "None - changes may go ahead at any time, under the approval rule above." %}</p>{% endif %}
+    {% if user.is_superuser %}<div style="margin-top:.5rem"><a class="btn tiny" href="{% url 'window_add' group.pk %}">{% translate "Add window" %}</a></div>{% endif %}
+    <h3 style="margin-top:1rem">{% translate "Secrets" %}</h3>
+    {% for secret in group.secrets.all %}<span class="tag mono">{{ secret.name }}</span>{% empty %}<p class="faint small" style="margin:0">{% translate "None for this group" %}{% if group.parents.exists %} {% translate "itself - the secrets of the groups above it apply" %}{% endif %}.</p>{% endfor %}
+    {% if group.pk in access.admin_groups %}<div style="margin-top:.5rem"><a class="btn tiny" href="{% url 'secret_create' %}?group={{ group.pk }}&next={{ request.path|urlencode }}">{% translate "Add secret" %}</a></div>{% endif %}
+    <h3 style="margin-top:1rem">{% translate "Access" %}</h3>
+    {% if grants %}
+      <table><tbody>
+      {% for grant in grants %}
+        <tr><td>{% if access.manage_teams %}<a href="{% url 'team_detail' grant.team.pk %}">{{ grant.team.name }}</a>{% else %}{{ grant.team.name }}{% endif %}</td><td class="faint">{{ grant.get_role_display }}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    {% else %}
+      <p class="faint small">{% translate "No team holds a role on this group directly" %}{% if group.parents.exists %} {% translate "- roles on the groups above it apply" %}{% endif %}.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

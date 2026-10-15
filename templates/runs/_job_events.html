@@ -1,0 +1,11 @@
+{% for event in events %}{% if event.stdout.strip %}<div class="log-line {{ event.level }}">{{ event.stdout }}</div>{% endif %}{% endfor %}
+{% if job.is_final %}
+  {% comment %}Only a poll response carries the status out of band - rendered as part
+  of the page itself it would draw a second status block inside the log.{% endcomment %}
+  {% if polling %}{% include "runs/_job_status.html" with job=job oob=1 %}{% endif %}
+{% else %}
+<div id="poller"
+     hx-get="{% url 'job_events' job.pk %}?after={{ last_counter }}"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML"></div>
+{% endif %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load loona_tags %}
+{% block title %}{% translate "Drift - Loona" %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{% translate "Drift" %}</h1><p class="subtitle">{% translate "Scheduled previews that notice when servers or cloud resources no longer match what Loona would make them. Nothing is changed by a check." %}</p></div>
+</div>
+
+<div class="split">
+  <div class="card">
+  {% if checks %}
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>{% translate "Check" %}</th><th>{% translate "Status" %}</th><th>{% translate "Last run" %}</th><th></th></tr></thead>
+      <tbody>
+      {% for check in checks %}
+        <tr>
+          <td>
+            {{ check.name }}
+            <div class="faint small">
+              {% if check.is_tofu %}{% translate "project" %} <a href="{{ check.tofu_project.get_absolute_url }}">{{ check.tofu_project.name }}</a>
+              {% else %}{% blocktranslate with name=check.playbook.name %}{{ name }} on{% endblocktranslate %} <span class="tag">{{ check.host_group.name }}</span>{% endif %}
+              · {{ check.get_interval_minutes_display|lower }}{% if not check.enabled %} {% blocktranslate %}· <b>paused</b>{% endblocktranslate %}{% endif %}
+            </div>
+          </td>
+          <td>
+            <span class="status {{ check.badge }}"><span class="dot"></span>{{ check.get_status_display }}</span>
+            {% if check.status == "drifted" %}<div class="faint small mono">{{ check.drifted|join:", "|truncatechars:80 }}</div>{% endif %}
+            {% if check.status_since %}<div class="faint small">{% blocktranslate with status_since=check.status_since|ago %}since {{ status_since }}{% endblocktranslate %}</div>{% endif %}
+          </td>
+          <td class="small">{% if check.last_job %}<a href="{{ check.last_job.get_absolute_url }}">#{{ check.last_job.pk }}</a> {{ check.last_run_at|ago }}{% else %}<span class="faint">{% translate "never" %}</span>{% endif %}</td>
+          <td style="text-align:right">
+            <div class="btn-row" style="justify-content:flex-end">
+              <form method="post" action="{% url 'drift_run' check.pk %}">{% csrf_token %}<button class="btn tiny" type="submit">{% translate "Check now" %}</button></form>
+              <form method="post" action="{% url 'drift_toggle' check.pk %}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% if check.enabled %}{% translate "Pause" %}{% else %}{% translate "Resume" %}{% endif %}</button></form>
+              {% blocktranslate asvar confirm_text with name=check.name %}Stop watching {{ name }}?{% endblocktranslate %}<form method="post" action="{% url 'drift_delete' check.pk %}" data-confirm="{{ confirm_text }}">{% csrf_token %}<button class="btn tiny ghost" type="submit">{% translate "Remove" %}</button></form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  {% else %}
+    <div class="empty">{% translate "Nothing is watched yet." %}</div>
+  {% endif %}
+  </div>
+
+  {% if can_create %}
+  <div class="card">
+    <div class="card-head"><h3>{% translate "Watch for drift" %}</h3></div>
+    <form method="post">{% csrf_token %}
+      {% include "core/_form.html" %}
+      <p class="help">{% translate "A playbook and a group: are those servers still as the playbook leaves them? Or an OpenTofu project: has anyone changed its resources outside Loona?" %}</p>
+      <button class="btn primary" type="submit">{% translate "Start watching" %}</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
