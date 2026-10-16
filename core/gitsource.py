@@ -99,7 +99,26 @@ def checkout(url: str, dest: Path, env: dict, ref: str = "", revision: str = "")
     _git(["clone", "--quiet", "--no-checkout", "--", url, str(dest)], env)
     wanted = revision or resolve(dest, ref or "HEAD", env)
     _git(["-C", str(dest), "checkout", "--quiet", "--detach", wanted], env)
+    check_links(dest)
     return wanted
+
+
+def check_links(repo: Path):
+    """Refuse a checkout with a symlink that leads out of it: copying the tree
+    or reading a requirements file through one would read Loona's own files."""
+    root = repo.resolve()
+    for folder, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d != ".git"]
+        for name in dirs + files:
+            path = Path(folder) / name
+            if not path.is_symlink():
+                continue
+            target = path.resolve()
+            if root not in target.parents:
+                raise GitError(f"{path.relative_to(root)} is a link out of the repository; links may only "
+                               f"point inside it.")
+            if target in path.parents:
+                raise GitError(f"{path.relative_to(root)} is a link to a folder it is in.")
 
 
 def ls_remote(url: str, ref: str, env: dict, timeout: int = 60) -> subprocess.CompletedProcess:

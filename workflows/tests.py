@@ -4,6 +4,7 @@
 import json
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase
@@ -296,6 +297,24 @@ class EditorTests(WorkflowTestCase):
         form = StepForm({"name": "c", "kind": "message"}, user=self.boss, workflow=self.workflow)
         self.assertFalse(form.is_valid())
         self.assertIn("message", form.errors)
+
+    def test_message_takes_only_known_placeholders(self):
+        for text in ("{started_by.__class__}", "{started_by[x]}", "{run!r}", "{step:>99}", "{tofu}", "{nope}"):
+            form = StepForm({"name": "m", "kind": "message", "message": text}, user=self.boss, workflow=self.workflow)
+            self.assertFalse(form.is_valid(), text)
+            self.assertIn("message", form.errors)
+        form = StepForm({"name": "m", "kind": "message", "message": '{run} {tofu[lb]} {"json": 1}'},
+                        user=self.boss, workflow=self.workflow)
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_message_never_walks_objects(self):
+        text = "{started_by.__class__.__init__.__globals__[settings].SECRET_KEY} {tofu[lb].x} {started_by}"
+        self.assertEqual(engine.fill(text, {"started_by": "alice"}, {"lb": "1"}),
+                         "{started_by.__class__.__init__.__globals__[settings].SECRET_KEY} {tofu[lb].x} alice")
+        self.step("tell", Step.MESSAGE, message="{started_by.__class__.__init__.__globals__[settings].SECRET_KEY}")
+        with patch("notifications.dispatch.emit") as emit:
+            self.start()
+        self.assertNotIn(settings.SECRET_KEY, emit.call_args.args[2])
 
     def test_pages(self):
         self.client.force_login(self.boss)

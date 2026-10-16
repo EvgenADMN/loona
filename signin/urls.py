@@ -11,6 +11,7 @@ urlpatterns = [
     path("login/sso/", views.sso_start, name="sso_start"),
     path("login/sso/oidc/callback/", views.oidc_callback, name="sso_oidc_callback"),
     path("login/sso/saml/acs/", views.saml_acs, name="sso_saml_acs"),
+    path("login/sso/saml/finish/", views.saml_finish, name="sso_saml_finish"),
     path("login/sso/saml/metadata/", views.saml_metadata, name="sso_saml_metadata"),
     path("account/security/", views.security_view, name="account_security"),
     path("account/security/setup/", views.security_setup, name="account_security_setup"),

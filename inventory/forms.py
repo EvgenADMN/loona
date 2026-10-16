@@ -52,6 +52,18 @@ def may_use_credential(access, credential) -> bool:
     return credential is None or access.unrestricted or access.credentials().filter(pk=credential.pk).exists()
 
 
+def check_git_credential_stays(form, access):
+    """A Git login the user may not hand out stays with the repository it was
+    set for: pointing the project elsewhere would send it to that server."""
+    instance, cleaned = form.instance, form.cleaned_data
+    credential = cleaned.get("git_credential")
+    if not instance.pk or credential is None or credential.pk != instance.git_credential_id:
+        return
+    if cleaned.get("git_url", instance.git_url) != instance.git_url and not may_use_credential(access, credential):
+        form.add_error("git_credential", _("This credential is not shared with you, so it cannot move to another "
+                                           "repository. Choose one of yours or none."))
+
+
 def _keep_unmanaged(selected, current, managed_ids):
     """The selection on screen plus links this user cannot see or change.
 
@@ -97,7 +109,7 @@ class HostForm(forms.ModelForm):
         cleaned = super().clean()
         # Pointing a host somewhere else sends its login there.  Whoever may
         # not use the host's credential themselves may not do that with it.
-        moved = self.instance.pk and {"address", "port"} & set(self.changed_data)
+        moved = self.moved()
         credential = cleaned.get("credential")
         if moved and credential and credential.pk == self.instance.credential_id \
                 and not may_use_credential(self.access, credential):
@@ -106,11 +118,21 @@ class HostForm(forms.ModelForm):
                 "Choose another credential to move it to a new address.") % {"credential": credential})
         return cleaned
 
+    def moved(self) -> bool:
+        """Whether the host now points at another machine. Without an address
+        it is reached by its name, so a new name moves it too."""
+        if not self.instance.pk:
+            return False
+        before = (self.initial.get("address") or self.initial.get("name"), self.initial.get("port"))
+        cleaned = self.cleaned_data
+        after = (cleaned.get("address") or cleaned.get("name"), cleaned.get("port"))
+        return before != after
+
     def save(self, commit=True):
         host = super().save(commit=False)
         # A pinned SSH host key belongs to the machine at the old address; the
         # new one gets pinned at its first connection.
-        if self.instance.pk and {"address", "port"} & set(self.changed_data):
+        if self.moved():
             host.ssh_host_keys = ""
             host.ssh_host_keys_pinned_at = None
         if commit:

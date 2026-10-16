@@ -27,6 +27,12 @@ if not SECRET_KEY:
             "Set LOONA_SECRET_KEY (or LOONA_DEBUG=true for development)."
         )
     SECRET_KEY = "dev-insecure-change-me"
+# The placeholders from .env.example are public: refused unless LOONA_DEBUG is on.
+PLACEHOLDER_SECRETS = {"change-me", "change-me-in-production"}
+if not DEBUG and SECRET_KEY in PLACEHOLDER_SECRETS:
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured("LOONA_SECRET_KEY is still the example's; set a long random one.")
 # The names Loona answers to.  Not "*" by default: absolute addresses (sign-in
 # callbacks, trigger URLs) are built from the Host header when no public URL
 # is set.  The internal address the worker uses is always allowed.

@@ -427,6 +427,9 @@ def _pump(stream, lines):
     lines.put(None)
 
 
+ERRORS_PAST_LIMIT = 200
+
+
 class _Log:
     """Writes a run's output into JobEvent rows, as the playbook runner does."""
 
@@ -442,17 +445,31 @@ class _Log:
             except SecretUnreadable:
                 pass  # the run itself reports it
         self.mask = Masker(values)
+        from administration import system
+
+        self.limit = system.get().max_job_events
+        self.truncated = False
 
     def line(self, text, step=""):
+        from runs.executor import clip
+
         self.counter += 1
-        text = self.mask(text)
+        text = clip(self.mask(text))
+        failed = text.startswith("Error:") or text.startswith("│ Error:")
+        # Past the limit only errors are kept: they say why a run failed.
+        if self.limit and self.counter > self.limit and not (failed and self.counter <= self.limit + ERRORS_PAST_LIMIT):
+            if not self.truncated:
+                self.truncated = True
+                JobEvent.objects.create(job=self.job, counter=self.counter, event="loona_truncated",
+                                        stdout=f"-- log truncated after {self.limit} lines --")
+            return
         JobEvent.objects.create(
             job=self.job,
             counter=self.counter,
             event="tofu_output",
             task=step,
             stdout=text,
-            failed=text.startswith("Error:") or text.startswith("│ Error:"),
+            failed=failed,
         )
 
 

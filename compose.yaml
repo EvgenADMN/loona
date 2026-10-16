@@ -8,6 +8,9 @@
 #   docker compose up -d --build
 #   open http://localhost:8080
 #
+# The web port is published on 127.0.0.1 only: put an HTTPS reverse proxy in
+# front (LOONA_HTTPS, LOONA_TRUST_PROXY), or set LOONA_BIND=0.0.0.0.
+#
 # PostgreSQL keeps its data in the loona-db volume; job scratch space and
 # the scheduler's state live in loona-data.
 
@@ -39,7 +42,7 @@ services:
     <<: *loona
     command: web
     ports:
-      - "${LOONA_PORT:-8080}:8000"
+      - "${LOONA_BIND:-127.0.0.1}:${LOONA_PORT:-8080}:8000"
     depends_on:
       db:
         condition: service_healthy

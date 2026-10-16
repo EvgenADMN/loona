@@ -17,6 +17,7 @@ from access import policy
 from core import gitsource
 from core.forms import TextFileField, style
 from infra.models import normalise_path
+from inventory.forms import check_git_credential_stays
 from inventory.models import Credential
 
 from .forms import vault_choices
@@ -35,7 +36,8 @@ class ProjectForm(forms.ModelForm):
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
-        credentials = policy.for_user(user).credentials()
+        self.access = policy.for_user(user)
+        credentials = self.access.credentials()
         if self.instance.git_credential_id:
             credentials = credentials | Credential.objects.filter(pk=self.instance.git_credential_id)
         self.fields["git_credential"].queryset = credentials.distinct()
@@ -57,6 +59,7 @@ class ProjectForm(forms.ModelForm):
         if ".." in path.split("/"):
             self.add_error("git_path", _("The folder must stay inside the repository."))
         cleaned["git_path"] = path
+        check_git_credential_stays(self, self.access)
         return cleaned
 
 

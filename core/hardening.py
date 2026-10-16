@@ -19,8 +19,9 @@ import os
 import sys
 
 # Variables that unlock something: the master keys, the database, the broker,
-# the directory's service account.  (The first admin's password is unset by the
-# container's entrypoint once createsuperuser has used it.)
+# the directory's service account, an executor's token.  (The first admin's
+# password never reaches Loona's processes: the entrypoint passes it to
+# createsuperuser alone.)
 SECRET_VARIABLES = (
     "LOONA_SECRET_KEY",
     "LOONA_SECRET_STORE_KEY",
@@ -29,6 +30,8 @@ SECRET_VARIABLES = (
     "LOONA_BROKER_URL",
     "LOONA_RESULT_BACKEND",
     "LOONA_LDAP_BIND_PASSWORD",
+    "LOONA_REDIS_PASSWORD",
+    "LOONA_EXECUTOR_TOKEN",
 )
 PR_SET_DUMPABLE = 4
 

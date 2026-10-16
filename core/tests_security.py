@@ -50,6 +50,22 @@ class RepositoryAddressTests(SimpleTestCase):
                 gitsource.ls_remote("https://git.example.com/a.git", "--upload-pack=id", {})
         run.assert_not_called()
 
+    def test_links_out_of_the_checkout_are_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo, outside = Path(tmp) / "repo", Path(tmp) / "outside.txt"
+            (repo / "roles" / "web").mkdir(parents=True)
+            outside.write_text("not for the repository")
+            (repo / "site.yml").write_text("- hosts: all\n")
+            (repo / "roles" / "site.yml").symlink_to("../site.yml")
+            (repo / "roles" / "common").symlink_to("web")
+            gitsource.check_links(repo)
+            for name, target in (("leak", outside), ("environ", Path("/proc/self/environ")),
+                                 ("up", Path("../../..")), ("loop", Path(".."))):
+                (repo / "roles" / "web" / name).symlink_to(target)
+                with self.assertRaises(gitsource.GitError, msg=name):
+                    gitsource.check_links(repo)
+                (repo / "roles" / "web" / name).unlink()
+
     @unittest.skipUnless(HAS_GIT, "git is not installed")
     def test_git_itself_is_held_to_the_list(self):
         """Even past the form, git refuses: ext:: and file:// are not allowed."""
@@ -148,6 +164,43 @@ class GroupAdminBoundaryTests(TestCase):
         # Dropping the credential is how it moves.
         self.edit_host(address="203.0.113.66", credential="")
         self.assertEqual((self.host.address, self.host.credential_id), ("203.0.113.66", None))
+
+    def test_a_host_reached_by_its_name_does_not_move_by_rename(self):
+        self.host.address = ""
+        self.host.save()
+        response = self.edit_host(name="203.0.113.66", address="")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.host.name, "web1")
+        # A new name that is only a label (the address stays) is fine.
+        self.edit_host(name="web1-renamed")
+        self.assertEqual((self.host.name, self.host.address), ("web1", ""))
+        self.host.address = "10.0.0.5"
+        self.host.save()
+        self.edit_host(name="web1-renamed")
+        self.assertEqual(self.host.name, "web1-renamed")
+
+    def test_an_unshared_git_login_does_not_follow_a_new_repository(self):
+        from infra.forms import ProjectForm as TofuProjectForm
+        from playbooks.project_views import ProjectForm
+
+        url = "https://git.example.com/infra/site.git"
+        ansible = Project.objects.create(name="site", source=Project.SOURCE_GIT, git_url=url,
+                                         git_credential=self.root_login)
+        tofu = TofuProject.objects.create(name="cloud", host_group=self.group, source=TofuProject.SOURCE_GIT,
+                                          git_url=url, git_credential=self.root_login)
+        for form_class, instance, extra in ((ProjectForm, ansible, {}),
+                                            (TofuProjectForm, tofu, {"host_group": self.group.pk, "bootstrap_user": "root"})):
+            data = {"name": instance.name, "description": "", "source": "git", "git_ref": "", "git_path": "",
+                    "git_credential": self.root_login.pk, **extra}
+            moved = form_class({**data, "git_url": "https://elsewhere.example.net/capture.git"},
+                               instance=instance, user=self.admin)
+            self.assertFalse(moved.is_valid(), form_class)
+            self.assertIn("git_credential", moved.errors)
+            for same in ({**data, "git_url": url}, {**data, "git_url": "https://elsewhere.example.net/x.git",
+                                                     "git_credential": ""}):
+                instance.refresh_from_db()
+                form = form_class(same, instance=instance, user=self.admin)
+                self.assertTrue(form.is_valid(), (form_class, form.errors))
 
     def test_the_pinned_key_of_such_a_host_stays(self):
         self.host.ssh_host_keys = "10.0.0.5 ssh-ed25519 AAAA"
@@ -251,3 +304,23 @@ class AlpineTemplateTests(SimpleTestCase):
                     if "escapejs" not in expression and not expression.strip().startswith(("csrf_token",)):
                         found.append(f"{path.name}: {expression.strip()}")
         self.assertEqual(found, [])
+
+
+class TofuLogLimitTests(TestCase):
+    def test_a_long_tofu_log_is_cut_but_keeps_its_errors(self):
+        from infra.runner import _Log
+        from runs.executor import MAX_EVENT_CHARS
+        from runs.models import Job
+
+        project = TofuProject.objects.create(name="cloud", host_group=HostGroup.objects.create(name="g"))
+        job = Job.objects.create(kind=Job.KIND_TOFU_PLAN, tofu_project=project, playbook_name="x", playbook_yaml="")
+        with patch("administration.system.get") as get:
+            get.return_value.max_job_events = 3
+            log = _Log(job)
+        for n in range(10):
+            log.line(f"line {n}")
+        log.line("Error: it broke")
+        log.line("x" * (MAX_EVENT_CHARS * 2))
+        stored = list(job.events.order_by("counter").values_list("event", "stdout"))
+        self.assertEqual([e for e, _ in stored], ["tofu_output"] * 3 + ["loona_truncated", "tofu_output"])
+        self.assertEqual(stored[-1][1], "Error: it broke")

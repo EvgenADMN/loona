@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from access import policy
+from access.middleware import may_still_act
 from core.version import __version__
 from infra.models import TofuProject
 from inventory import facts
@@ -726,7 +727,7 @@ def fire_trigger(request, pk):
         return Response({"skipped": "the previous run from this trigger is still going",
                          "job": trigger.last_job_id}, status=status.HTTP_202_ACCEPTED)
     user = trigger.run_as
-    if not user.is_active:
+    if not may_still_act(user):
         return Response({"detail": "The trigger's owner can no longer sign in."},
                         status=status.HTTP_403_FORBIDDEN)
     if trigger.action == Trigger.WORKFLOW:

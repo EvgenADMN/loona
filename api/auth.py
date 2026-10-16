@@ -24,10 +24,12 @@ class TokenAuthentication(authentication.BaseAuthentication):
         user = token.user
         if not user.is_active:
             raise exceptions.AuthenticationFailed("The token's owner cannot sign in.")
-        from access.middleware import directory_still_allows
+        from access.middleware import directory_still_allows, reload_user
 
         if not directory_still_allows(user):
             raise exceptions.AuthenticationFailed("The directory no longer lets this user in.")
+        # A re-check may just have changed is_superuser or the teams.
+        reload_user(user)
         # A write per request is waste; a minute's precision is plenty.
         now = timezone.now()
         if token.last_used_at is None or now - token.last_used_at > timedelta(minutes=1):

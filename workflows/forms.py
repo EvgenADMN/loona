@@ -75,6 +75,10 @@ class StepForm(forms.ModelForm):
         for field in needs:
             if not cleaned.get(field):
                 self.add_error(field, _("Needed for this kind of step."))
+        if kind == Step.MESSAGE:
+            unknown = engine.unknown_placeholders(cleaned.get("message") or "")
+            if unknown:
+                self.add_error("message", _("Unknown placeholder: %(name)s.") % {"name": unknown[0]})
         name = cleaned.get("name")
         if name and self.workflow.steps.filter(name=name).exclude(pk=self.instance.pk or 0).exists():
             self.add_error("name", _("Another step has this name."))

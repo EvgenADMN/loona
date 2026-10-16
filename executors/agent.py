@@ -46,6 +46,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from core.hardening import harden
 from core.masking import Masker
 from core.processes import kill_leftovers
 from core.version import __version__
@@ -543,6 +544,9 @@ def main(argv=None):
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     if not args.url or not args.token:
         parser.error("set LOONA_URL and LOONA_EXECUTOR_TOKEN")
+    # Runs started from here neither inherit the token nor can read it from
+    # this process.
+    harden()
     client = Client(args.url, args.token, args.name, max(1, args.slots), args.ca_file, args.allow_http)
     agent = Agent(client, Path(args.workdir), max(0.5, args.poll))
 

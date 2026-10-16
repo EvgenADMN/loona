@@ -140,6 +140,9 @@ class Job(models.Model):
     )
     project_revision = models.CharField(max_length=80, blank=True, default="")
     project_files = models.JSONField(default=dict, blank=True)
+    # The project file a run started from (a file-mode playbook); empty when
+    # it ran playbook_yaml.  An apply takes it from its preview.
+    playbook_file = models.CharField(max_length=255, blank=True, default="")
     # The catalog request a tofu plan or apply is for.  See catalog.services.
     catalog_request = models.ForeignKey(
         "catalog.CatalogRequest", on_delete=models.SET_NULL, null=True, blank=True, related_name="jobs",

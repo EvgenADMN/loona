@@ -9,18 +9,22 @@
 # Anything else is run as a command, e.g. "python manage.py shell".
 set -e
 
+# The first admin's password goes to createsuperuser and nowhere else.
+admin_password="${DJANGO_SUPERUSER_PASSWORD:-}"
+unset DJANGO_SUPERUSER_PASSWORD
+
 case "$1" in
   web)
     python manage.py migrate --noinput
     # First start: an admin to sign in with, if the environment names one.
-    if [ -n "${LOONA_ADMIN_USERNAME}" ] && [ -n "${DJANGO_SUPERUSER_PASSWORD}" ]; then
-      python manage.py createsuperuser --noinput \
+    if [ -n "${LOONA_ADMIN_USERNAME}" ] && [ -n "${admin_password}" ]; then
+      DJANGO_SUPERUSER_PASSWORD="${admin_password}" python manage.py createsuperuser --noinput \
         --username "${LOONA_ADMIN_USERNAME}" --email "${LOONA_ADMIN_EMAIL:-}" 2>/dev/null \
         && echo "Created admin user ${LOONA_ADMIN_USERNAME}" || true
     fi
     # The editor's module list; harmless if ansible-doc has a bad day.
     python manage.py loona_modules || echo "Module index not refreshed; the editor falls back to its catalog."
-    unset DJANGO_SUPERUSER_PASSWORD
+    unset admin_password
     # --preload: the master loads the settings too, and so drops the keys
     # from its environment before it forks the workers.
     exec gunicorn loona.wsgi \

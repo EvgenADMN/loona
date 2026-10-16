@@ -5,6 +5,7 @@ provider; and the page where people manage their own one-time codes."""
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlencode
 
 from django import forms
 from django.contrib import messages
@@ -13,6 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy, ngettext
@@ -270,7 +272,23 @@ def oidc_callback(request):
 @require_POST
 def saml_acs(request):
     # The IdP posts here from its own page: no CSRF token, the signed and
-    # solicited (InResponseTo) assertion is what is checked instead.
+    # solicited (InResponseTo) assertion is what is checked instead.  The
+    # session cookie is not sent with this POST; saml_finish gets it.
+    from . import saml
+
+    if conf().sso_protocol != "saml":
+        messages.error(request, _("Single sign-on is not set up."))
+        return redirect("login")
+    try:
+        request_id = saml.receive(request)
+    except Refused as exc:
+        log.warning("SSO sign-in refused: %s", exc)
+        messages.error(request, str(exc))
+        return redirect("login")
+    return redirect(reverse("sso_saml_finish") + "?" + urlencode({"request": request_id}))
+
+
+def saml_finish(request):
     return _finish_sso(request, "saml")
 
 

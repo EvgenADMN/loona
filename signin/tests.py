@@ -176,11 +176,13 @@ class PasswordSignInTests(TestCase):
         self.sign_in()
         settings(mfa_policy="everyone")
         self.assertRedirects(self.client.get("/"), reverse("account_security"), fetch_redirect_response=False)
+        self.assertEqual(self.client.get("/api/v1/me/").status_code, 403)
         self.assertEqual(self.client.get(reverse("account_security")).status_code, 200)
         self.client.get(reverse("account_security_setup"))
         secret = TotpDevice.objects.get(user=self.alice).secret
         self.client.post(reverse("account_security_setup"), {"code": totp.code_at(secret, totp.current_step())})
         self.assertEqual(self.client.get("/").status_code, 200)
+        self.assertEqual(self.client.get("/api/v1/me/").status_code, 200)
 
     def test_turning_codes_off_takes_a_code_and_is_refused_when_required(self):
         with_codes(self.alice)
@@ -443,6 +445,35 @@ class SamlTests(TestCase):
         from .models import SamlRequest
 
         self.assertEqual(SamlRequest.objects.count(), 1)
+
+    def test_an_answer_only_signs_in_the_browser_that_asked(self):
+        from django.test import Client
+
+        from . import saml
+        from .models import SamlRequest
+        from .sso import Claims
+
+        settings(saml_idp_metadata=IDP_METADATA)
+        self.client.get(reverse("sso_start"))
+        request_id = SamlRequest.objects.get().request_id
+        answer = base64.b64encode(
+            f'<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" ID="x" Version="2.0" '
+            f'IssueInstant="2026-01-01T00:00:00Z" InResponseTo="{request_id}"/>'.encode()).decode()
+        claims = Claims(protocol="saml", issuer="https://idp.example.com/meta", subject="mallory", username="mallory")
+        # Someone else's browser is handed the (valid) answer to this request.
+        other = Client()
+        with patch.object(saml, "_verified", return_value=claims):
+            response = other.post(reverse("sso_saml_acs"), {"SAMLResponse": answer})
+            self.assertEqual(other.post(reverse("sso_saml_acs"), {"SAMLResponse": answer})["Location"],
+                             reverse("login"), "one answer per request")
+        finish = response["Location"]
+        self.assertTrue(finish.startswith(reverse("sso_saml_finish")))
+        self.assertRedirects(other.get(finish), reverse("login"), fetch_redirect_response=False)
+        self.assertNotIn("_auth_user_id", other.session)
+        # The browser that started it collects it, once.
+        self.client.get(finish)
+        self.assertEqual(User.objects.get(pk=self.client.session["_auth_user_id"]).username, "mallory")
+        self.assertFalse(SamlRequest.objects.exists())
 
 
 CERT = ("MIIBrTCCAVOgAwIBAgIUQ9F0VqvDT3P0gQf0pFOxkx4p1ZEwCgYIKoZIzj0EAwIwEjEQMA4GA1UEAwwHdGVzdC1p"

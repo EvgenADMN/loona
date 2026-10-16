@@ -77,9 +77,8 @@ def materialize(job, private_data_dir: Path, log) -> Path:
     return target
 
 
-def playbook_from_project(job, project_dir: Path) -> str:
+def playbook_from_project(path: str, project_dir: Path) -> str:
     """File mode: the playbook's own YAML, from the version just checked out."""
-    path = job.playbook.file_path if job.playbook else ""
     source = (project_dir / path).resolve()
     if not path or project_dir.resolve() not in source.parents or not source.is_file():
         raise ProjectError(_('The project has no playbook file %(path)s.') % {"path": repr(path)})

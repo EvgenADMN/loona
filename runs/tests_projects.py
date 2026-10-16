@@ -119,6 +119,39 @@ class ProjectRunTests(TestCase):
         self.assertEqual((self.out / "motd").read_text(), "previewed from localhost\n")
         self.assertEqual(applied.project_revision, preview.project_revision)
 
+    def test_apply_runs_the_file_the_preview_ran(self):
+        def writes(word):
+            return (f"- hosts: all\n  gather_facts: false\n  tasks:\n    - ansible.builtin.copy:\n"
+                    f"        dest: {self.out}/{word}\n        content: {word}\n")
+        project = self.files_project({"safe.yml": writes("safe"), "alternate.yml": writes("alternate")})
+        playbook = Playbook.objects.create(name="site", mode=Playbook.MODE_FILE, project=project, file_path="safe.yml")
+        preview = self.launch(playbook, preview=True)
+        self.assertEqual((preview.status, preview.playbook_file), (Job.SUCCESSFUL, "safe.yml"), preview.error_message)
+        playbook.file_path = "alternate.yml"
+        playbook.save()
+        with patch("runs.services.dispatch"):
+            applied = plans.apply(preview, self.user)
+        executor.run_job(applied.pk)
+        applied.refresh_from_db()
+        self.assertEqual(applied.status, Job.SUCCESSFUL, applied.error_message)
+        self.assertTrue((self.out / "safe").exists())
+        self.assertFalse((self.out / "alternate").exists())
+
+    def test_a_bootstrap_runs_its_own_yaml_around_a_file_baseline(self):
+        from . import projects
+
+        project = self.files_project({"base.yml": "- hosts: all\n  tasks: []\n"})
+        baseline = Playbook.objects.create(name="base", mode=Playbook.MODE_FILE, project=project, file_path="base.yml")
+        generated = "- name: Remove the bootstrap key\n  hosts: all\n  tasks: []\n- ansible.builtin.import_playbook: base.yml\n"
+        job = Job.objects.create(kind=Job.KIND_BOOTSTRAP, playbook=baseline, ansible_project=project,
+                                 playbook_name="Bootstrap", playbook_yaml=generated)
+        run_dir = self.tmp / "bootstrap"
+        (run_dir / "project").mkdir(parents=True)
+        entry, _ = executor._prepare_playbook(job, run_dir, {})
+        self.assertEqual(entry, projects.INLINE_PLAYBOOK)
+        self.assertEqual((run_dir / "project" / entry).read_text(), generated)
+        self.assertEqual(Job.objects.get(pk=job.pk).playbook_yaml, generated)
+
     def test_a_missing_playbook_file_fails_clearly(self):
         project = self.files_project({"other.yml": "- hosts: all\n  tasks: []\n"})
         playbook = Playbook.objects.create(name="gone", mode=Playbook.MODE_FILE, project=project, file_path="site.yml")

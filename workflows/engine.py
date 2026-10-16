@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
@@ -302,13 +303,9 @@ def _send(node: Node):
 
     run = node.run
     failed = ", ".join(n.step.name for n in run.nodes.select_related("step") if n.status == Node.FAILED)
-    values = {"workflow": run.workflow.name, "run": run.pk, "started_by": run.created_by or "",
-              "failed_steps": failed or "none", "tofu": _Blank(outputs_for(run)[0])}
-    text = node.step.message or "{workflow} reached {step}."
-    try:
-        text = text.format_map(_Blank({**values, "step": node.step.name}))
-    except (ValueError, IndexError):
-        pass  # braces that are not placeholders: sent as written
+    values = {"workflow": run.workflow.name, "run": str(run.pk), "started_by": str(run.created_by or ""),
+              "failed_steps": failed or "none", "step": node.step.name}
+    text = fill(node.step.message or "{workflow} reached {step}.", values, outputs_for(run)[0])
     channels = list(node.step.channels.all())
     dispatch.emit(WORKFLOW_MESSAGE, f"{run.workflow.name}: {node.step.name}", text,
                   reverse("workflow_run", args=[run.pk]), run.workflow.host_group.ancestor_ids(),
@@ -316,9 +313,33 @@ def _send(node: Node):
                   channels=channels or None)
 
 
-class _Blank(dict):
-    def __missing__(self, key):
-        return "{" + key + "}"
+PLACEHOLDERS = ("workflow", "run", "step", "started_by", "failed_steps")
+PLACEHOLDER = re.compile(r"\{(\w+)(?:\[([\w.-]+)\])?\}")
+
+
+def fill(text: str, values: dict, outputs: dict) -> str:
+    """Put plain strings in place of {name} and {tofu[output]}; anything else in
+    braces is sent as written. Never str.format: it walks attributes and keys."""
+    def one(match):
+        name, key = match.groups()
+        if key is None and name in PLACEHOLDERS:
+            return values.get(name, "")
+        if name == "tofu" and key is not None and key in outputs:
+            value = outputs[key]
+            return value if isinstance(value, str) else json.dumps(value)
+        return match.group(0)
+    return PLACEHOLDER.sub(one, text)
+
+
+def unknown_placeholders(text: str) -> list[str]:
+    """Braced names fill() would leave alone: {started_by.email}, {run!r}, {tofu}."""
+    found = []
+    for field in re.findall(r"\{[A-Za-z_][^{}]*\}", text):
+        match = PLACEHOLDER.fullmatch(field)
+        ok = match and ((match[2] is None and match[1] in PLACEHOLDERS) or (match[2] and match[1] == "tofu"))
+        if not ok:
+            found.append(field)
+    return found
 
 
 def _tell_failed(run, unhandled):

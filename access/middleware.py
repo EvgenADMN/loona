@@ -76,9 +76,17 @@ class DirectoryRecheckMiddleware:
             messages.warning(request, _("Your directory account no longer gives access to Loona."))
             return redirect(settings.LOGIN_URL)
         request.session[SESSION_KEY] = now
-        # Flags such as is_superuser may have changed under this request.
-        request.user.refresh_from_db()
+        reload_user(request.user)
         return None
+
+
+def reload_user(user):
+    """Re-read the user and drop the permission caches built from the old row:
+    is_superuser, teams or permissions may have changed during this request."""
+    user.refresh_from_db()
+    real = getattr(user, "_wrapped", user)  # request.user is a SimpleLazyObject
+    for cache in ("_perm_cache", "_user_perm_cache", "_group_perm_cache", "_loona_access"):
+        real.__dict__.pop(cache, None)
 
 
 def directory_still_allows(user) -> bool:
@@ -104,3 +112,12 @@ def directory_still_allows(user) -> bool:
         return True
     refreshed = sync_user(found, conf) if found is not None else None
     return refreshed is not None and refreshed.is_active
+
+
+def may_still_act(user) -> bool:
+    """For a run started on a user's behalf outside a request (a trigger, a
+    schedule): the account is active and the directory still lets it in."""
+    if not user.is_active or not directory_still_allows(user):
+        return False
+    reload_user(user)
+    return user.is_active

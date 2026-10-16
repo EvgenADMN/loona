@@ -165,6 +165,7 @@ def apply(plan: Job, user) -> Job:
         # The very project version the preview ran with; see runs.projects.
         ansible_project=plan.ansible_project,
         project_revision=plan.project_revision,
+        playbook_file=plan.playbook_file,
         playbook_name=plan.playbook_name,
         playbook_yaml=plan.playbook_yaml,
         limit=plan.limit,

@@ -7370,3 +7370,20 @@ msgstr "Только суперпользователь может назват�
 #, python-format
 msgid "An account named %(name)s already exists in Loona and signs in on its own; single sign-on does not take such accounts over."
 msgstr "Учётка %(name)s уже есть в Loona и входит сама; единый вход такие учётки не забирает."
+
+#: inventory/forms.py
+msgid "This credential is not shared with you, so it cannot move to another repository. Choose one of yours or none."
+msgstr "Этой учёткой с вами не поделились, поэтому она не может перейти к другому репозиторию. Выберите свою учётку или никакой."
+
+#: signin/middleware.py
+msgid "Set up one-time codes first: Account - Security."
+msgstr "Сначала настройте одноразовые коды: Учётная запись - Защита."
+
+#: signin/saml.py
+msgid "This sign-in was not started in this browser, or took too long. Try again."
+msgstr "Этот вход начат не в этом браузере или длился слишком долго. Попробуйте снова."
+
+#: workflows/forms.py
+#, python-format
+msgid "Unknown placeholder: %(name)s."
+msgstr "Неизвестная подстановка: %(name)s."

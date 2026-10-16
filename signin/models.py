@@ -81,10 +81,12 @@ class SamlRequest(models.Model):
     Kept here rather than in the session: the IdP posts the answer from its
     own site, and browsers do not send a SameSite=Lax session cookie along
     with such a POST.  Each one is good for one answer and ten minutes.
+    The checked answer waits here until the browser that asked collects it.
     """
 
     request_id = models.CharField(max_length=100, unique=True)
     next_url = models.CharField(max_length=500, blank=True, default="")
+    claims = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

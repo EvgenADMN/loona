@@ -80,10 +80,16 @@ def _prepare_playbook(job, private_data_dir: Path, counters) -> tuple[str, dict]
             project_dir = projects.materialize(job, private_data_dir, log)
             galaxy_env = projects.galaxy_environment(job.ansible_project, private_data_dir)
             extra_env = projects.install_requirements(project_dir, galaxy_env, log)
-            if job.playbook and job.playbook.mode == job.playbook.MODE_FILE:
-                job.playbook_yaml = projects.playbook_from_project(job, project_dir)
-                job.save(update_fields=["playbook_yaml"])
-                return job.playbook.file_path, extra_env
+            # Only a new run reads the playbook's current file_path. An apply
+            # runs the file its preview ran; a bootstrap runs its generated
+            # YAML, which imports the baseline itself.
+            if not job.plan_id and job.kind == Job.KIND_PLAYBOOK and job.playbook \
+                    and job.playbook.mode == job.playbook.MODE_FILE:
+                job.playbook_file = job.playbook.file_path
+            if job.playbook_file:
+                job.playbook_yaml = projects.playbook_from_project(job.playbook_file, project_dir)
+                job.save(update_fields=["playbook_yaml", "playbook_file"])
+                return job.playbook_file, extra_env
         except projects.ProjectError as exc:
             raise ValueError(str(exc)) from exc
     (project_dir / projects.INLINE_PLAYBOOK).write_text(job.playbook_yaml)
@@ -220,10 +226,18 @@ def _vault_credentials(job: Job) -> list:
     return [found[pk] for pk in sorted(found)]
 
 
+# One event's output; a task that prints a whole file is cut, not stored whole.
+MAX_EVENT_CHARS = 64_000
+
+
+def clip(text: str) -> str:
+    return text if len(text) <= MAX_EVENT_CHARS else text[:MAX_EVENT_CHARS] + "\n[... cut by Loona ...]"
+
+
 def _record_event(job_id: int, event: dict, counters: dict):
     data = event.get("event_data") or {}
     mask = counters.get("mask") or Masker()
-    stdout = mask(ANSI_RE.sub("", event.get("stdout") or ""))
+    stdout = clip(mask(ANSI_RE.sub("", event.get("stdout") or "")))
     name = event.get("event") or ""
 
     if name in NOISY_EVENTS and not stdout.strip():

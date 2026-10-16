@@ -55,6 +55,10 @@ class DirectoryUser:
         return bool(dn) and dn_key(dn) in self.groups
 
 
+AD_ACCOUNT_CONTROL = "userAccountControl"
+AD_ACCOUNT_DISABLED = 0x2  # ACCOUNTDISABLE
+
+
 class Directory:
     """One conversation with the directory server."""
 
@@ -125,6 +129,9 @@ class Directory:
             )
             if a
         ]
+        # Active Directory keeps a disabled account in place; a server that has
+        # no such attribute just leaves it out.
+        attrs.append(AD_ACCOUNT_CONTROL)
         conn.search(conf["USER_BASE"], query, SUBTREE, attributes=attrs, size_limit=2)
         entries = conn.entries
         if len(entries) != 1:
@@ -134,6 +141,10 @@ class Directory:
                 log.warning("LDAP filter %s matched more than one entry", query)
             return None
         entry = entries[0]
+        control = _first(entry, AD_ACCOUNT_CONTROL)
+        if control.isdigit() and int(control) & AD_ACCOUNT_DISABLED:
+            log.info("LDAP account %s is disabled", entry.entry_dn)
+            return None
         return DirectoryUser(
             dn=entry.entry_dn,
             username=_first(entry, conf["USERNAME_ATTR"]) or username,

@@ -49,6 +49,7 @@ def run_due(now=None) -> int:
 def fire(schedule: Schedule, now=None):
     """Start one run of this schedule now, or say why not. Returns the job or None."""
     from access import policy
+    from access.middleware import may_still_act
 
     from . import services
     from .forms import JobLaunchForm
@@ -59,7 +60,7 @@ def fire(schedule: Schedule, now=None):
         _note(schedule, f"Skipped {_local(schedule, now)}: the previous run (#{previous.pk}) was still going.")
         return None
     user = schedule.run_as
-    if not user.is_active:
+    if not may_still_act(user):
         _note(schedule, f"Not started: {user} can no longer sign in.")
         return None
     access = policy.for_user(user)

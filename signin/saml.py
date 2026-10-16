@@ -6,9 +6,17 @@ Loona trusts the signing certificate in the IdP metadata an administrator
 pasted, insists on signed assertions, and only takes answers to requests it
 sent itself (no IdP-initiated sign-in): an assertion replayed from another
 service cannot open a session here.
+
+The answer must also come back to the browser that asked.  The IdP posts it
+from its own site, so the session cookie (SameSite=Lax) does not come along:
+the ACS checks the answer and keeps it, then redirects the browser to
+/login/sso/saml/finish/, and that request does carry the cookie.  Only the
+session that started the sign-in can collect the answer, so one issued for
+somebody's own account cannot be planted in another person's browser.
 """
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 from urllib.parse import urlsplit
 
@@ -19,6 +27,7 @@ from django.utils.translation import gettext as _
 from .sso import Claims, Refused, as_list, conf, group_names
 
 MAX_AGE = timedelta(minutes=10)
+SESSION_KEY = "loona_saml_request"
 
 
 def _base(request) -> str:
@@ -101,7 +110,9 @@ def begin(request, next_url: str) -> str:
     auth = _auth(request)
     url = auth.login(return_to="")
     SamlRequest.objects.filter(created_at__lt=timezone.now() - MAX_AGE).delete()
-    SamlRequest.objects.create(request_id=auth.get_last_request_id(), next_url=next_url[:500])
+    request_id = auth.get_last_request_id()
+    SamlRequest.objects.create(request_id=request_id, next_url=next_url[:500])
+    request.session[SESSION_KEY] = request_id
     return url
 
 
@@ -120,16 +131,42 @@ def _answered_request(request):
         in_response_to = answer.document.get("InResponseTo") or ""
     except Exception as exc:  # noqa: BLE001 - malformed input from outside
         raise Refused(_("The identity provider's answer cannot be read: %(error)s") % {"error": exc}) from exc
-    found = SamlRequest.objects.filter(request_id=in_response_to,
+    found = SamlRequest.objects.filter(request_id=in_response_to, claims__isnull=True,
                                        created_at__gte=timezone.now() - MAX_AGE).first()
-    if not in_response_to or found is None or not SamlRequest.objects.filter(pk=found.pk).delete()[0]:
+    if not in_response_to or found is None:
         raise Refused(_("This sign-in was not started here, or took too long. Try again."))
     return found
 
 
-def complete(request) -> tuple[Claims, str]:
-    row = conf()
+def receive(request) -> str:
+    """The ACS: check the IdP's answer and keep it for the browser that asked.
+    Returns the request it answers."""
+    from .models import SamlRequest
+
     started = _answered_request(request)
+    claims = _verified(request, started)
+    kept = SamlRequest.objects.filter(pk=started.pk, claims__isnull=True).update(claims=dataclasses.asdict(claims))
+    if not kept:
+        raise Refused(_("This sign-in was not started here, or took too long. Try again."))
+    return started.request_id
+
+
+def complete(request) -> tuple[Claims, str]:
+    """The answer kept by receive(), for the session that started the sign-in only."""
+    from .models import SamlRequest
+
+    request_id = request.GET.get("request", "")
+    mine = request.session.pop(SESSION_KEY, None)
+    found = SamlRequest.objects.filter(request_id=request_id, claims__isnull=False,
+                                       created_at__gte=timezone.now() - MAX_AGE).first()
+    if not request_id or mine != request_id or found is None \
+            or not SamlRequest.objects.filter(pk=found.pk).delete()[0]:
+        raise Refused(_("This sign-in was not started in this browser, or took too long. Try again."))
+    return Claims(**found.claims), found.next_url
+
+
+def _verified(request, started) -> Claims:
+    row = conf()
     auth = _auth(request)
     try:
         auth.process_response(request_id=started.request_id)
@@ -155,7 +192,7 @@ def complete(request) -> tuple[Claims, str]:
         first_name=first(row.sso_first_name_attr),
         last_name=first(row.sso_last_name_attr),
         groups=group_names(attributes.get(row.sso_groups_attr)) if row.sso_groups_attr else [],
-    ), started.next_url
+    )
 
 
 def metadata(request) -> str:

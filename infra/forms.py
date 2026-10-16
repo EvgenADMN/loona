@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from access import policy
 from core.forms import TextFileField, style
+from inventory.forms import check_git_credential_stays
 from inventory.models import Credential, HostGroup
 
 from .models import TofuFile, TofuProject, TofuVariable, normalise_path
@@ -46,7 +47,13 @@ class ProjectForm(forms.ModelForm):
         self.fields["git_credential"].queryset = credentials.distinct()
         self.fields["git_credential"].required = False
         self.fields["baseline_playbook"].required = False
+        self.access = access
         style(self)
+
+    def clean(self):
+        cleaned = super().clean()
+        check_git_credential_stays(self, self.access)
+        return cleaned
 
 
 class FileForm(forms.ModelForm):

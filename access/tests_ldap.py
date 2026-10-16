@@ -294,3 +294,60 @@ class TokenRecheckTests(LdapTestCase):
         self.assertEqual(api.get("/api/v1/me/").status_code, 200)
         DirectoryAccount.objects.filter(user=alice).update(synced_at=timezone.now() - timedelta(hours=1))
         self.assertEqual(api.get("/api/v1/me/").status_code, 401)
+
+    def test_the_first_request_after_a_demotion_is_already_demoted(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+        from rest_framework.test import APIClient
+
+        from api.models import ApiToken
+
+        conf = {**CONF, "SUPERUSER_GROUP": f"cn=root,{GROUPS}"}
+        with override_settings(LOONA_LDAP=conf):
+            alice = authenticate(username="alice", password="alice-pw")
+            self.assertTrue(alice.is_superuser)
+            _, raw = ApiToken.issue(alice, "ci")
+            api = APIClient()
+            api.credentials(HTTP_AUTHORIZATION=f"Bearer {raw}")
+            self.remove_member(f"cn=root,{GROUPS}", ALICE)
+            DirectoryAccount.objects.filter(user=alice).update(synced_at=timezone.now() - timedelta(hours=1))
+            response = api.get("/api/v1/me/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["superuser"])
+
+    def test_a_trigger_stops_with_its_owners_directory_account(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from api.models import Trigger
+        from playbooks.models import Playbook
+
+        alice = authenticate(username="alice", password="alice-pw")
+        trigger = Trigger(name="ci", action=Trigger.PREVIEW, playbook=Playbook.objects.create(name="p"),
+                          run_as=alice)
+        secret = trigger.new_secret()
+        trigger.save()
+        self.conn.bind()
+        self.conn.delete(ALICE)
+        DirectoryAccount.objects.filter(user=alice).update(synced_at=timezone.now() - timedelta(hours=1))
+        response = self.client.post(f"/api/v1/triggers/{trigger.pk}/fire/",
+                                    HTTP_X_LOONA_TRIGGER_TOKEN=secret)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("owner", response.json()["detail"])
+
+    def test_a_disabled_active_directory_account_is_out(self):
+        from ldap3 import MODIFY_REPLACE
+
+        from django.utils import timezone
+        from datetime import timedelta
+
+        alice = authenticate(username="alice", password="alice-pw")
+        self.conn.bind()
+        self.conn.modify(ALICE, {"userAccountControl": [(MODIFY_REPLACE, ["514"])]})
+        self.assertIsNone(authenticate(username="alice", password="alice-pw"))
+        DirectoryAccount.objects.filter(user=alice).update(synced_at=timezone.now() - timedelta(hours=1))
+        self.assertFalse(middleware.directory_still_allows(alice))
+        self.conn.modify(ALICE, {"userAccountControl": [(MODIFY_REPLACE, ["512"])]})
+        self.assertIsNotNone(authenticate(username="alice", password="alice-pw"))
